@@ -1,12 +1,18 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dsrp/dsrp.dart';
+import 'package:test/test.dart';
 
 void main() {
-  test('adds one to input values', () {
-    final calculator = Calculator();
-    expect(calculator.addOne(2), 3);
-    expect(calculator.addOne(-7), -6);
-    expect(calculator.addOne(0), 1);
+  group('A group of tests', () {
+      final calculator = Calculator();
+
+      setUp(() {
+          // Additional setup goes here.
+      });
+
+      test('adds one to input values', () {
+          expect(calculator.addOne(2), 3);
+          expect(calculator.addOne(-7), -6);
+          expect(calculator.addOne(0), 1);
+      });
   });
 }
