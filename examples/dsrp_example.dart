@@ -1,6 +1,6 @@
 import 'package:dsrp/dsrp.dart';
 
 void main() {
-  final user = User();
-  final saltedVerificationKey = user.createSaltedVerificationKey("willy", "wonka");
+  final user = User(userId: "willy", password: "wonka");
+  final saltedVerificationKey = user.createSaltedVerificationKey();
 }

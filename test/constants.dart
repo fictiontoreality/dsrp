@@ -1,2 +1,2 @@
-const PASSWORD = 'cow';
-const USERNAME = 'brown';
+const password = 'cow';
+const username = 'brown';
