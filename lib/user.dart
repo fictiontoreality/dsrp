@@ -28,10 +28,13 @@ class User {
 
   //TODO: Make these class fields.
   static final defaultHashAlgorithm = Sha256();
-  static final defaultSafePrime = BigInt.parse('EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3', radix: 16);
+  static final defaultSafePrime = BigInt.parse(
+      'EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3',
+      radix: 16);
 
   /// User identifier.
   final String userId;
+
   /// User password.
   final String password;
 
@@ -39,6 +42,7 @@ class User {
   /// Typically denoted 'g'.
   final BigInt generator;
   final HashAlgorithm hashAlgorithm;
+
   /// A large, safe prime.
   /// Typically denoted 'N'.
   /// By definition a safe prime N = 2q + 1, where q is a Sophie Germain prime.
@@ -52,16 +56,18 @@ class User {
   List<int>? sessionKeyVerifier;
 
   User({
-      required this.userId,
-      required this.password,
-      BigInt? generator,
-      BigInt? safePrime,
-      HashAlgorithm? hashAlgorithm,
-  }): generator = generator ?? BigInt.from(2),
-      safePrime = safePrime ?? defaultSafePrime,
-      hashAlgorithm = hashAlgorithm ?? defaultHashAlgorithm;
+    required this.userId,
+    required this.password,
+    BigInt? generator,
+    BigInt? safePrime,
+    HashAlgorithm? hashAlgorithm,
+  })  : generator = generator ?? BigInt.from(2),
+        safePrime = safePrime ?? defaultSafePrime,
+        hashAlgorithm = hashAlgorithm ?? defaultHashAlgorithm;
 
-  /// Create salted verification key; pass this data to server as part of user registration request.
+  /// Creates salted verification key.
+  ///
+  /// Pass this data to server as part of user registration request.
   Future<SaltedVerificationKey> createSaltedVerificationKey({List<int>? salt}) async {
     //TODO: How big should the salt be?
     salt ??= generateRandomBytes(128);
@@ -82,41 +88,42 @@ class User {
     );
   }
 
-  // Future<SaltedVerificationKey> createSaltedVerificationKeyWithArgon2(String userId, String password) async {
-  //   //TODO: How big should the salt be?
-  //   final salt = List<int>.generate(128, (index) => random.nextInt(256));
-  //   //TODO: Hash alg should be specifiable.
-  //   final argon2id = Argon2id(
-  //     //OPTIMIZE: What should these values be?
-  //     parallelism: 3,
-  //     memorySize: 10000000,
-  //     iterations: 3,
-  //     hashLength: 32,
-  //   );
-  //   // Private key (as defined by RFC 5054)
-  //   // x = H(s, H( I | ‘:’ | p ))
-  //   var privateKey = await argon2id.deriveKey(
-  //     //TODO: How should this secret key be formatted?
-  //     secretKey: SecretKey(utf8.encode('$userId:$password')),
-  //     nonce: [],
-  //   );
-  //   privateKey = await argon2id.deriveKey(
-  //     secretKey: privateKey,
-  //     nonce: salt,
-  //   );
-  //   final privateKeyInt = convertByteListToInt(await privateKey.extractBytes());
-  //   final verifierKey = generator.modPow(privateKeyInt, safePrime);
-  //   final verifierKeyBytes = convertIntToByteList(verifierKey);
-  //   return SaltedVerificationKey(
-  //     key: verifierKeyBytes,
-  //     salt: salt,
-  //   );
-  // }
+  Future<SaltedVerificationKey> createSaltedVerificationKeyWithArgon2() async {
+    //TODO: How big should the salt be?
+    final salt = List<int>.generate(128, (index) => random.nextInt(256));
+    //TODO: Hash alg should be specifiable.
+    final argon2id = Argon2id(
+      //OPTIMIZE: What should these values be?
+      parallelism: 3,
+      memorySize: 10000000,
+      iterations: 3,
+      hashLength: 32,
+    );
+    // Private key (as defined by RFC 5054)
+    // x = H(s, H( I | ‘:’ | p ))
+    var privateKey = await argon2id.deriveKey(
+      //TODO: How should this secret key be formatted?
+      secretKey: SecretKey(utf8.encode('$userId:$password')),
+      nonce: [],
+    );
+    privateKey = await argon2id.deriveKey(
+      secretKey: privateKey,
+      nonce: salt,
+    );
+    final privateKeyInt = convertByteListToBigInt(await privateKey.extractBytes());
+    final verifierKey = generator.modPow(privateKeyInt, safePrime);
+    final verifierKeyBytes = convertBigIntToByteList(verifierKey);
+    return SaltedVerificationKey(
+      key: verifierKeyBytes,
+      salt: salt,
+    );
+  }
 
-  /// Generate data needed in server request to initiate authentication.
+  /// Generates data needed in server request to initiate authentication.
   StartAuthenticationData startAuthentication({List<int>? ephemeralPrivateUserKeyBytes}) {
     ephemeralPrivateUserKeyBytes ??= generateRandomBytes(32);
     ephemeralPrivateUserKey = convertByteListToBigInt(ephemeralPrivateUserKeyBytes);
+    // A = g^a
     final ephemeralPublicUserKey = generator.modPow(ephemeralPrivateUserKey!, safePrime);
     ephemeralPublicUserKeyBytes = convertBigIntToByteList(ephemeralPublicUserKey);
     return StartAuthenticationData(
@@ -126,39 +133,59 @@ class User {
   }
 
   /// Processes challenge from server; returns session key verifier to be sent to the server.
-  Future<List<int>> processChallenge(List<int> salt, List<int> ephemeralPublicServerKeyBytes) async {
-    // Notated 'k'.
-    final multiplierParameter = convertByteListToBigInt((await hashAlgorithm.hash(convertBigIntToByteList(safePrime + generator))).bytes);
-    // Notated 'u'.
-    final randomScramblingParameter = convertByteListToBigInt((await hashAlgorithm.hash(ephemeralPublicUserKeyBytes! + ephemeralPublicServerKeyBytes)).bytes);
-    // Notated 'B'.
-    final ephemeralPublicServerKey = convertByteListToBigInt(ephemeralPublicServerKeyBytes);
-    // B - kg^x
-    final firstTerm = ephemeralPublicServerKey - multiplierParameter * generator.modPow(ephemeralPrivateUserKey!, safePrime);
-    // a + ux
-    final secondTerm = ephemeralPrivateUserKey! + randomScramblingParameter * ephemeralPrivateUserKey!;
-    // K = H( (B - kg^x) ^ (a + ux) )
-    sessionKey = (await hashAlgorithm.hash(convertBigIntToByteList(firstTerm ^ secondTerm))).bytes;
+  Future<List<int>> processChallenge(
+      List<int> salt, List<int> ephemeralPublicServerKeyBytes) async {
+    _deriveSessionKey(ephemeralPublicServerKeyBytes);
     // H(N)
-    final hashedSafePrime = convertByteListToBigInt((await hashAlgorithm.hash(convertBigIntToByteList(safePrime))).bytes);
+    final hashedSafePrime = convertByteListToBigInt(
+        (await hashAlgorithm.hash(convertBigIntToByteList(safePrime))).bytes);
     // H(g)
-    final hashedGenerator = convertByteListToBigInt((await hashAlgorithm.hash(convertBigIntToByteList(generator))).bytes);
+    final hashedGenerator = convertByteListToBigInt(
+        (await hashAlgorithm.hash(convertBigIntToByteList(generator))).bytes);
     // H(I)
     final hashedUserId = (await hashAlgorithm.hash(utf8.encode(userId))).bytes;
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = convertBigIntToByteList(hashedSafePrime ^ hashedGenerator);
     // M = H(H(N) xor H(g), H(I), s, A, B, K)
-    sessionKeyVerifier = (await hashAlgorithm.hash(hashedSafePrimeAndGenerator + hashedUserId + salt
-      + ephemeralPublicUserKeyBytes! + ephemeralPublicServerKeyBytes + sessionKey!)).bytes;
+    sessionKeyVerifier = (await hashAlgorithm.hash(hashedSafePrimeAndGenerator +
+            hashedUserId +
+            salt +
+            ephemeralPublicUserKeyBytes! +
+            ephemeralPublicServerKeyBytes +
+            sessionKey!))
+        .bytes;
     return sessionKeyVerifier!;
   }
 
   /// Verify server session key matches expected value, which verifies server is who is expected.
   /// Throws exception if it does not, in which case authentication should be abandoned.
   verifySession(List<int> serverSessionKeyVerifier) async {
-    final expectedServerSessionKeyVerifier = (await hashAlgorithm.hash(ephemeralPublicUserKeyBytes! + sessionKeyVerifier! + sessionKey!)).bytes;
+    final expectedServerSessionKeyVerifier =
+        (await hashAlgorithm.hash(ephemeralPublicUserKeyBytes! + sessionKeyVerifier! + sessionKey!))
+            .bytes;
     if (serverSessionKeyVerifier != expectedServerSessionKeyVerifier) {
       throw 'Server session key does not match expected value.';
     }
+  }
+
+  /// Calculates the session key which will later be used for encrypted communication with server.
+  _deriveSessionKey(List<int> ephemeralPublicServerKeyBytes) async {
+    // Notated 'u'.
+    final randomScramblingParameter = convertByteListToBigInt(
+        (await hashAlgorithm.hash(ephemeralPublicUserKeyBytes! + ephemeralPublicServerKeyBytes))
+            .bytes);
+    // Notated 'k'.
+    final multiplierParameter = convertByteListToBigInt(
+        (await hashAlgorithm.hash(convertBigIntToByteList(safePrime + generator))).bytes);
+    // Notated 'B'.
+    final ephemeralPublicServerKey = convertByteListToBigInt(ephemeralPublicServerKeyBytes);
+    // B - kg^x
+    final firstTerm = ephemeralPublicServerKey -
+        multiplierParameter * generator.modPow(ephemeralPrivateUserKey!, safePrime);
+    // a + ux
+    final secondTerm =
+        ephemeralPrivateUserKey! + randomScramblingParameter * ephemeralPrivateUserKey!;
+    // K = H( (B - kg^x) ^ (a + ux) )
+    sessionKey = (await hashAlgorithm.hash(convertBigIntToByteList(firstTerm ^ secondTerm))).bytes;
   }
 }
