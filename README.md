@@ -11,8 +11,12 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/developing-packages).
 -->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+A pure Dart implementation of the [Secure Remote Password (SRP)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol)
+user authentication protocol.
+
+SRP allows a user to authenticate with a server without ever passing
+password-equivalent information to the server, avoiding a large class
+of man-in-the-middle attacks.
 
 ## Features
 
