@@ -1,7 +1,7 @@
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
-import './constants.dart';
+import 'constants.dart';
 
 void main() {
   authenticate(List<int> verifierKey, List<int> salt) async {

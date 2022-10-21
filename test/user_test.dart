@@ -2,7 +2,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
-import './constants.dart';
+import 'constants.dart';
 
 // Python SRP library used for testing: https://github.com/cocagne/pysrp
 void main() {

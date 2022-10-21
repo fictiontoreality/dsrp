@@ -1,12 +1,15 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart';
 
-import './constants.dart' show defaultHashAlgorithm, defaultSafePrime;
-import './exceptions.dart' show AuthenticationFailure;
-import './rfc5054.dart';
-import './util.dart';
+import 'defaults.dart' show defaultHashAlgorithm, defaultSafePrime;
+import 'exceptions.dart' show AuthenticationFailure;
+import 'rfc5054.dart';
+import 'util.dart';
 
+/// Challenge server offers to the user to verify their identity.
 ///
+/// This provides the user the minimum data needed from the server to generate
+/// the session key and its verifier.
 class Challenge {
   final List<int> ephemeralServerPublicKey;
   final List<int> salt;
