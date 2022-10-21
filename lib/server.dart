@@ -1,7 +1,7 @@
 // import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart';
 
-import './constants.dart';
+import './constants.dart' show defaultHashAlgorithm, defaultSafePrime;
 // import './exceptions.dart';
 import './rfc5054.dart';
 import './util.dart';
