@@ -49,6 +49,18 @@ List<int> generateRandomBytes(int bytesCount) {
   return List<int>.generate(bytesCount, (index) => random.nextInt(256));
 }
 
+extension BigIntToByteList on BigInt {
+  List<int> toByteList() {
+    return convertBigIntToByteList(this);
+  }
+}
+
+extension ByteListToBigInt on List<int> {
+  BigInt toBigInt() {
+    return convertByteListToBigInt(this);
+  }
+}
+
 //TODO: Consider using package:collections instead.
 extension ListComparisons on List {
   /// True if two lists contain the same elements in the same order.
