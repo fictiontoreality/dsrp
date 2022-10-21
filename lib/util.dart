@@ -48,3 +48,17 @@ List<int> convertBigIntToByteList(BigInt number) {
 List<int> generateRandomBytes(int bytesCount) {
   return List<int>.generate(bytesCount, (index) => random.nextInt(256));
 }
+
+//TODO: Consider using package:collections instead.
+extension ListComparisons on List {
+  /// True if two lists contain the same elements in the same order.
+  bool equals(List list) {
+    if (length != list.length) return false;
+    for (var i = 0; i < list.length; i++) {
+      if (this[i] != list[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+}

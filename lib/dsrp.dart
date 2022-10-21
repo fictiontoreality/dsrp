@@ -1,4 +1,5 @@
 library dsrp;
 
-// export 'server.dart' show Server;
-export 'user.dart' show AuthenticationFailure, SaltedVerificationKey, StartAuthenticationData, User;
+export 'exceptions.dart' show AuthenticationFailure;
+export 'server.dart' show Server;
+export 'user.dart' show SaltedVerificationKey, StartAuthenticationData, User;
