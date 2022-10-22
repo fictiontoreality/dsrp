@@ -97,10 +97,6 @@ You can increase the number of bits or change the desired generator by
 modifying the `PRIME_BIT_LENGTH` and `DESIRED_GENERATOR` respectively
 at the top of the script.
 
-NOTE: The script may not produce a safe prime that matches your
-desired generator - if so, just re-run the script until it produces
-one.
-
 ## Additional information
 
 TODO: Tell users more about the package: where to find more information, how to
