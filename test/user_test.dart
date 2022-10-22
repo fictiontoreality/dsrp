@@ -13,7 +13,7 @@ void main() {
   late User user;
 
   setUp(() {
-      user = User(userId: username, password: password, hashAlgorithm: Sha256());
+      user = User(userId: username, password: password, hashAlgorithm: Sha256(), safePrime: safePrime);
   });
 
   group('generateSaltedVerificationKey tests', () {

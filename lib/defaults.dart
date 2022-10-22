@@ -6,6 +6,13 @@ final defaultHashAlgorithm = Sha256();
 
 /// TODO: Are there better (performance, security) generators?
 final defaultGenerator = BigInt.from(2);
-/// Source: 1024 bit prime from RFC 5054 Appendix A section 1.
-/// FIXME: Choose a better default safe prime!!! This one was chosen primarily for
-final defaultSafePrime = BigInt.parse('EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3', radix: 16);
+
+/// 2048-bit safe prime generated using scripts/generate_safe_primes.py.
+///
+/// IT IS RECOMMENDED TO GENERATE YOUR OWN SAFE PRIMES FOR ADDED SECURITY.
+///
+/// By not reusing a published safe prime (such as one from RFC5054), odds are
+/// reduced that the prime has been integrated into pre-computed attack methods.
+final defaultSafePrime = BigInt.parse(
+    'ef0e3dc9ba1d254350c23c3d13dc91d6243d3701dcd1fd7ec084b3bebc0e0eb9b3bd795e7fc0b30b606a6ee5a8482eee75843fc63c1a5f309d40f6b4b544b6a69b3d778949dd16d857c29b3803e0538972427d95c59d74a147777aaff3ef9b397c64423bbdbc039e57960ecc9079ec14f5bbfe455baf7a8edb6cc7ce85973379941d81221601171add5c2a7292b5e03c97d2f1a08345c182843372ecd6072ebdac0dc64b5bcdae93bca495a67454ad38ecc0b9fc2fab3a2723bf2ebdb9418b92684152caba282159c0d20f4514ea8b6c7613f4d3ac3cef1ee4046283cd4003088d928dd8337c7c5391c75a26e1ab49c372ddf2f702f7f9a7226cad4572e39d53',
+    radix: 16);
