@@ -7,6 +7,10 @@ import gensafeprime
 PRIME_BIT_LENGTH = 2048
 DESIRED_GENERATOR = 2
 
+# Set the max generator of the multiplicative group to search for.
+# Avoids an infinite loop when finding the generator.
+MAX_GENERATOR = 20
+
 ################################################################################
 
 def find_generator(prime):
@@ -16,9 +20,7 @@ def find_generator(prime):
     '''
     factors = primefactors(prime - 1)
     # print('Prime factors:', factors)
-    # Avoid infinite loop.
-    max_generator = 20
-    for generator in range(2, max_generator + 1):
+    for generator in range(2, MAX_GENERATOR + 1):
         found_generator = True
         for factor in factors:
             if pow(generator, (prime - 1) // factor, prime) == 1:
