@@ -53,7 +53,7 @@ def verify_safe_prime(prime):
     return generator
 
 
-iteration_count = 0
+iteration_count = 1
 safe_prime = None
 generator = None
 while not safe_prime:
