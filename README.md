@@ -37,7 +37,10 @@ dependencies:
 SRP is divided into two phases:
 
 1. Registration, where the user registers a username and associated salted verification key with a server.
-2. Authentication, where user and server both derive and mutually authenticate session keys which are used to encrypt all further communication between the two (in addition to TLS and other encryption).
+2. Authentication, where user and server both derive and mutually
+   authenticate session keys which are used to encrypt all further
+   communication between the two (in addition to TLS and other
+   encryption).
 
 ```dart
 // Registration.
@@ -65,6 +68,38 @@ final serverSessionKeyVerifier = await server.verifySession(userSessionKeyVerifi
 await user.verifySession(serverSessionKeyVerifier);
 ```
 This and other usage examples are in the `/examples` folder.
+
+### Generate safe primes
+
+Pre-published safe primes such as those published in RFC5054 have
+likely been incorporated into pre-computed attacks, which may
+significantly reduce the compute time needed to infer the user
+password and break SFC encryption from eons to hours or even minutes.
+
+Thus it is recommended to generate and use your own safe primes.
+
+A Python 3 script is included for generating safe primes. Running it
+requires installing some dependencies then executing the script:
+
+```
+pip3 install gensafeprime sympy
+python3 ./scripts/generate_safe_primes.py
+```
+
+By default the script generates a 2048-bit safe prime as an integer
+and hex. It also does some verification:
+- sufficiently large (i.e., the highest bit is 1).
+- it is in fact a safe prime.
+- the generator of the mulitplicative group of integers modulus the
+  safe prime is 2 (you may decide to use a different generator).
+
+You can increase the number of bits or change the desired generator by
+modifying the `PRIME_BIT_LENGTH` and `DESIRED_GENERATOR` respectively
+at the top of the script.
+
+NOTE: The script may not produce a safe prime that matches your
+desired generator - if so, just re-run the script until it produces
+one.
 
 ## Additional information
 

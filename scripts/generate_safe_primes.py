@@ -3,11 +3,16 @@
 from sympy.ntheory import isprime, primefactors
 import gensafeprime
 
+# User parameters - modify these to your desire!
 PRIME_BIT_LENGTH = 2048
+DESIRED_GENERATOR = 2
+
+################################################################################
 
 # Generate safe prime using OpenSSL.
 safe_prime = gensafeprime.generate(PRIME_BIT_LENGTH)
 print('Safe prime:', safe_prime)
+print('Safe prime hex:', hex(safe_prime))
 safe_prime_bin = bin(safe_prime)
 # print('binary form:', safe_prime_bin)
 
@@ -25,7 +30,7 @@ assert safe_prime == 2 * sophie_germain_prime + 1
 assert isprime(sophie_germain_prime)
 ## Verify multiplicative generator is 2.
 def find_generator(prime):
-    '''Find generator of the multiplicative the group of integers modulo `prime`.
+    '''Find generator of the multiplicative group of integers modulo `prime`.
     Based on algorithm proposed here: https://crypto.stackexchange.com/a/89178/83069
     '''
     factors = primefactors(prime - 1)
@@ -42,4 +47,4 @@ def find_generator(prime):
             return generator
 generator = find_generator(safe_prime)
 print('Generator:', generator)
-assert generator == 2
+assert generator == DESIRED_GENERATOR
