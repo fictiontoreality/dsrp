@@ -86,6 +86,10 @@ pip3 install gensafeprime sympy
 python3 ./scripts/generate_safe_primes.py
 ```
 
+NOTE: This may take less than a second to more than five minutes due
+to the nature of random search, how lucky you are, and how powerful
+your computer is.
+
 By default the script generates a 2048-bit safe prime as an integer
 and hex. It also does some verification:
 - sufficiently large (i.e., the highest bit is 1).

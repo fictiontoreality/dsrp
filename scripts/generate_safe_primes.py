@@ -60,7 +60,7 @@ while not safe_prime:
     candidate_safe_prime = gensafeprime.generate(PRIME_BIT_LENGTH)
     try:
         generator = verify_safe_prime(candidate_safe_prime)
-    except:
+    except AssertionError:
         iteration_count += 1
         continue
     safe_prime = candidate_safe_prime
