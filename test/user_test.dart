@@ -45,7 +45,10 @@ void main() {
           final expectedSessionKey = [101, 63, 34, 246, 210, 134, 205, 205, 240, 205, 128, 100, 230, 168, 167, 194, 55, 91, 245, 230, 238, 184, 15, 28, 156, 136, 56, 1, 16, 196, 159, 25];
           final expectedSessionKeyVerifier = [112, 68, 29, 211, 34, 202, 76, 147, 231, 195, 23, 181, 197, 114, 154, 72, 227, 238, 18, 235, 59, 22, 61, 155, 143, 248, 68, 202, 125, 239, 103, 176];
 
-          final sessionKeyVerifier = await user.processChallenge(salt, serverPublicKey);
+          final challenge = Challenge(
+            salt: salt,
+            ephemeralServerPublicKey: serverPublicKey);
+          final sessionKeyVerifier = await user.processChallenge(challenge);
           expect(user.sessionKey, expectedSessionKey);
           expect(sessionKeyVerifier, expectedSessionKeyVerifier);
       });
@@ -56,7 +59,10 @@ void main() {
 
       setUp(() async {
           user.startAuthentication(userPrivateKeyBytes: userPrivateKey);
-          await user.processChallenge(salt, serverPublicKey);
+          final challenge = Challenge(
+            salt: salt,
+            ephemeralServerPublicKey: serverPublicKey);
+          await user.processChallenge(challenge);
       });
 
       test('verification passes for correct server verifier', () async {

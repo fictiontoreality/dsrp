@@ -17,8 +17,7 @@ void main() {
     );
     final challenge = await server.createChallenge();
 
-    final userSessionKeyVerifier = await user.processChallenge(
-      challenge.salt, challenge.ephemeralServerPublicKey);
+    final userSessionKeyVerifier = await user.processChallenge(challenge);
 
     final serverSessionKeyVerifier = await server.verifySession(userSessionKeyVerifier);
 
