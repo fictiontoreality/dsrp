@@ -4,31 +4,34 @@ import 'package:test/test.dart';
 import 'constants.dart';
 
 void main() {
-  authenticate(List<int> verifierKey, List<int> salt, {BigInt? safePrime}) async {
-    final user = User(userId: username, password: password, safePrime: safePrime);
-    final startAuthData = user.startAuthentication();
-
+  authenticate(List<int> verifierKey, List<int> salt, {List<int>? safePrime}) async {
     final server = Server(
-      userId: startAuthData.userId,
-      salt: salt,
-      verifierKey: verifierKey,
-      ephemeralUserPublicKey: startAuthData.ephemeralUserPublicKey,
+      userId: username,
+      salt: salt, verifierKey: verifierKey,
       safePrime: safePrime,
     );
     final challenge = await server.createChallenge();
 
-    final userSessionKeyVerifier = await user.processChallenge(challenge);
+    final user = await User.fromUserCredsAndChallenge(
+      userId: username, password: password,
+      challenge: challenge,
+    );
+    final userSessionVerifiers = user.getUserSessionVerifiers();
 
-    final serverSessionKeyVerifier = await server.verifySession(userSessionKeyVerifier);
+    final serverSessionKeyVerifier = await server.verifySession(
+      ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+      userSessionKeyVerifier: userSessionVerifiers.userSessionKeyVerifier);
 
     await user.verifySession(serverSessionKeyVerifier);
+
+    expect(user.sessionKey, server.sessionKey);
   }
 
   group('end to end integration tests', () {
       test('full SRP workflow', () async {
           // Registration.
-          final user = User(userId: username, password: password);
-          final saltedVerificationKey = await user.createSaltedVerificationKey();
+          final saltedVerificationKey = await User.createSaltedVerificationKey(
+            userId: username, password: password);
           // Authentication.
           await authenticate(saltedVerificationKey.key, saltedVerificationKey.salt);
       });

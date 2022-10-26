@@ -1,8 +1,8 @@
-import 'package:cryptography/cryptography.dart';
+import 'hash.dart';
 
 /// Balance between compatibility, speed and security.
 /// FIXME: Should this be bumped up?
-final defaultHashAlgorithm = Sha256();
+final defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
 
 /// TODO: Are there better (performance, security) generators?
 final defaultGenerator = BigInt.from(2);
