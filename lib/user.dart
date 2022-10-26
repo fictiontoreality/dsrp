@@ -22,12 +22,12 @@ class SaltedVerificationKey {
 class UserSessionVerifiers {
   final String userId;
   final List<int> ephemeralUserPublicKey;
-  final List<int> userSessionKeyVerifier;
+  final List<int> sessionKeyVerifier;
 
   UserSessionVerifiers({
       required this.userId,
       required this.ephemeralUserPublicKey,
-      required this.userSessionKeyVerifier
+      required this.sessionKeyVerifier
   });
 }
 
@@ -216,7 +216,7 @@ class User {
     return UserSessionVerifiers(
       userId: userId,
       ephemeralUserPublicKey: _ephemeralUserPublicKeyBytes!,
-      userSessionKeyVerifier: _userSessionKeyVerifier,
+      sessionKeyVerifier: _userSessionKeyVerifier,
     );
   }
 

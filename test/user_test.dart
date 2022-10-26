@@ -60,7 +60,7 @@ void main() {
               final userSessionVerifiers = user.getUserSessionVerifiers();
 
               expect(userSessionVerifiers.ephemeralUserPublicKey, expectedUserPublicKey);
-              expect(userSessionVerifiers.userSessionKeyVerifier, expectedSessionKeyVerifier);
+              expect(userSessionVerifiers.sessionKeyVerifier, expectedSessionKeyVerifier);
           });
       });
 

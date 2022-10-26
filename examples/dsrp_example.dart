@@ -49,7 +49,7 @@ void main() async {
   // encrypted with the session key.
   final serverSessionKeyVerifier = await server.verifySession(
     ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
-    userSessionKeyVerifier: userSessionVerifiers.userSessionKeyVerifier);
+    userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier);
 
   // 5. The user verifies the server session key. Throws an exception if verification fails.
   await user.verifySession(serverSessionKeyVerifier);

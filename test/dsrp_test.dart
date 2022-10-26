@@ -20,7 +20,7 @@ void main() {
 
     final serverSessionKeyVerifier = await server.verifySession(
       ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
-      userSessionKeyVerifier: userSessionVerifiers.userSessionKeyVerifier);
+      userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier);
 
     await user.verifySession(serverSessionKeyVerifier);
 
