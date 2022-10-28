@@ -48,8 +48,8 @@ class Server {
   /// All arithmetic is performed in the field of integers modulo N.
   final BigInt safePrime;
 
-  BigInt? serverPrivateKey;
-  BigInt? serverPublicKey;
+  BigInt? ephemeralServerPrivateKey;
+  List<int>? ephemeralServerPublicKey;
   List<int>? sessionKey;
 
   Server({
@@ -66,19 +66,20 @@ class Server {
        hashAlgorithm = getHashAlgorithm(hashAlgorithm ?? defaultHashAlgorithmChoice);
 
   /// Create verification challenge to send to user.
-  Future<Challenge> createChallenge({List<int>? serverPrivateKeyBytes}) async {
-    serverPrivateKeyBytes ??= generateRandomBytes(32);
-    serverPrivateKey = serverPrivateKeyBytes.toBigInt();
+  Future<Challenge> createChallenge({List<int>? ephemeralServerPrivateKeyBytes}) async {
+    ephemeralServerPrivateKeyBytes ??= generateRandomBytes(32);
+    ephemeralServerPrivateKey = ephemeralServerPrivateKeyBytes.toBigInt();
     // k = H(N,g)
     final multiplierParameter = (await _hashRfc5054(
         [safePrime.toByteList(), generator.toByteList()]
     )).toBigInt();
     // B = kv + g^b
-    serverPublicKey = (multiplierParameter * verifierKey + generator.modPow(serverPrivateKey!, safePrime)) % safePrime;
+    final ephemeralServerPublicKeyInt = (multiplierParameter * verifierKey + generator.modPow(ephemeralServerPrivateKey!, safePrime)) % safePrime;
+    ephemeralServerPublicKey = ephemeralServerPublicKeyInt.toByteList();
     return Challenge(
       generator: generator.toInt(),
       safePrime: safePrime.toByteList(),
-      ephemeralServerPublicKey: serverPublicKey!.toByteList(),
+      ephemeralServerPublicKey: ephemeralServerPublicKey!,
       verifierKeySalt: salt,
       hashAlgorithm: hashAlgorithmChoice
     );
@@ -91,6 +92,9 @@ class Server {
   Future<List<int>> verifySession(
     {required List<int> ephemeralUserPublicKey, required List<int> userSessionKeyVerifier}
   ) async {
+    if (ephemeralUserPublicKey.toBigInt() % safePrime == BigInt.zero) {
+      throw AuthenticationFailure('Invalid ephemeral user public key.');
+    }
     sessionKey = await _deriveSessionKey(ephemeralUserPublicKey);
     // Verify user session key.
     final expectedUserSessionKeyVerifier = await _deriveUserSessionKeyVerifier(
@@ -109,17 +113,19 @@ class Server {
   Future<List<int>> _deriveSessionKey(List<int> ephemeralUserPublicKey) async {
     // u = H(A,B)
     final randomScramblingParameter = (await _hashRfc5054(
-        [ephemeralUserPublicKey, serverPublicKey!.toByteList()]
+        [ephemeralUserPublicKey, ephemeralServerPublicKey!]
     )).toBigInt();
     // Av^u
-    final innerTerm = ephemeralUserPublicKey.toBigInt() *
+    final base = ephemeralUserPublicKey.toBigInt() *
         verifierKey.modPow(randomScramblingParameter, safePrime);
+    // (Av^u) ^ b
+    final power = base.modPow(ephemeralServerPrivateKey!, safePrime).toByteList();
     // K = H((Av^u) ^ b)
-    final sessionKey = (await hashAlgorithm.hash((innerTerm.modPow(serverPrivateKey!, safePrime)).toByteList())).bytes;
+    final sessionKey = (await hashAlgorithm.hash(power)).bytes;
     return sessionKey;
   }
 
-  ///TODO: Merge with User.processChallenge.
+  ///TODO: Merge with User.processChallenge?
   /// M1 = H(H(N) xor H(g), H(I), s, A, B, K)
   Future<List<int>> _deriveUserSessionKeyVerifier(List<int> ephemeralUserPublicKey) async {
     // H(N)
@@ -136,7 +142,7 @@ class Server {
         hashedUserId +
         salt +
         ephemeralUserPublicKey +
-        serverPublicKey!.toByteList() +
+        ephemeralServerPublicKey! +
         sessionKey!
     )).bytes;
     return sessionKeyVerifier;
