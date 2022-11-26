@@ -36,17 +36,16 @@ void main() async {
     userId: userId, password: password, challenge: challenge);
   final userSessionVerifiers = user.getUserSessionVerifiers();
 
-  // 3. The verifiers are sent to the server.
+  // 3. The user-derived verifiers are sent to the server.
+
+  // 4. The server verifies the user session key and responds with a session-key
+  // encrypted message containing its own verifier.
+  // Throws an exception if verification fails.
   // At this point all message bodies between user and server should be
   // encrypted using the session key (e.g., user.sessionKey,
   // server.sessionKey). This supplements but does not replace TLS and
   // other transport layer encryption. If at any point a message body cannot be
   // decrypted, the message should be dropped.
-
-  // 4. The server verifies the user session key and responds with its own verifier.
-  // Throws an exception if verification fails.
-  // Again, note that messages starting with step 3 should have their bodies
-  // encrypted with the session key.
   final serverSessionKeyVerifier = await server.verifySession(
     ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
     userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier);
