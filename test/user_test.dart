@@ -18,6 +18,30 @@ void main() {
           expect(verifierKey.salt, salt);
           expect(verifierKey.key, expectedVerifierKey);
       });
+
+      test('generates random salt when not provided', () async {
+          final verifierKey1 = await User.createSaltedVerificationKey(
+            userId: username, password: password,
+            generator: generator, safePrime: safePrime);
+          final verifierKey2 = await User.createSaltedVerificationKey(
+            userId: username, password: password,
+            generator: generator, safePrime: safePrime);
+
+          expect(verifierKey1.salt.length, 128);
+          expect(verifierKey2.salt.length, 128);
+          expect(verifierKey1.salt, isNot(equals(verifierKey2.salt)));
+          expect(verifierKey1.key, isNot(equals(verifierKey2.key)));
+      });
+
+      test('uses default safe prime when not provided', () async {
+          final verifierKey = await User.createSaltedVerificationKey(
+            userId: username, password: password,
+            generator: generator,
+            salt: salt);
+
+          expect(verifierKey.salt, salt);
+          expect(verifierKey.key.length, greaterThan(0));
+      });
   });
 
   group('User object tests', () {
@@ -61,6 +85,25 @@ void main() {
 
               expect(userSessionVerifiers.ephemeralUserPublicKey, expectedUserPublicKey);
               expect(userSessionVerifiers.sessionKeyVerifier, expectedSessionKeyVerifier);
+          });
+
+          test('generates random ephemeral private key when not provided', () async {
+              final user1 = await User.fromUserCredsAndChallenge(
+                userId: username, password: password, challenge: challenge);
+              final user2 = await User.fromUserCredsAndChallenge(
+                userId: username, password: password, challenge: challenge);
+
+              final verifiers1 = user1.getUserSessionVerifiers();
+              final verifiers2 = user2.getUserSessionVerifiers();
+
+              expect(verifiers1.ephemeralUserPublicKey, isNot(equals(verifiers2.ephemeralUserPublicKey)));
+          });
+      });
+
+      group('getUserSessionVerifiers tests', () {
+          test('returns correct userId', () {
+              final userSessionVerifiers = user.getUserSessionVerifiers();
+              expect(userSessionVerifiers.userId, username);
           });
       });
 
