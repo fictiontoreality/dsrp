@@ -1,6 +1,6 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart' show HashAlgorithm;
-import 'package:dsrp/defaults.dart' show defaultHashAlgorithmChoice, defaultSafePrime;
+import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
 import 'package:dsrp/hash.dart';
 import 'package:dsrp/rfc5054.dart';
@@ -62,8 +62,8 @@ class Server {
       List<int>? safePrime,
       HashAlgorithmChoice? hashAlgorithm,
   }) : verifierKey = verifierKey.toBigInt(),
-       generator = generator ?? BigInt.from(2),
-       safePrime = safePrime != null ? safePrime.toBigInt() : defaultSafePrime,
+       generator = generator ?? defaultGenerator,
+       safePrime = safePrime?.toBigInt() ?? defaultSafePrime,
        hashAlgorithmChoice = hashAlgorithm ?? defaultHashAlgorithmChoice,
        hashAlgorithm = getHashAlgorithm(hashAlgorithm ?? defaultHashAlgorithmChoice) {
     if (safePrime == null) {

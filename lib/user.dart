@@ -99,7 +99,7 @@ class User {
     required this.safePrime,
     required List<int> verifierKeySalt,
     required this.hashAlgorithm,
-}): _verifierKeySalt = verifierKeySalt,
+  }): _verifierKeySalt = verifierKeySalt,
     _hashAlgorithm = getHashAlgorithm(hashAlgorithm);
 
   // _verifierKeySalt = challenge.verifierKeySalt
