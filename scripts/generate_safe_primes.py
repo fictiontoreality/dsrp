@@ -1,11 +1,12 @@
 #! /usr/bin/env python3
 '''Generates large 2048-bit safe primes suitable for use in SRP.'''
+import argparse
 from sympy.ntheory import isprime, primefactors
 import gensafeprime
 
-# User parameters - modify these to your desire!
-PRIME_BIT_LENGTH = 2048
-DESIRED_GENERATOR = 2
+# Default parameters
+DEFAULT_PRIME_BIT_LENGTH = 2048
+DEFAULT_GENERATOR = 2
 
 # Set the max generator of the multiplicative group to search for.
 # Avoids an infinite loop when finding the generator.
@@ -30,14 +31,14 @@ def find_generator(prime):
             return generator
 
 
-def verify_safe_prime(prime):
+def verify_safe_prime(prime, prime_bit_length, desired_generator):
     '''Verifies safe prime and its generator has the required properties.
 
     Returns the generator.
     '''
     prime_bin = bin(prime)
     ## Verify bit length.
-    assert len(prime_bin[2:]) == PRIME_BIT_LENGTH
+    assert len(prime_bin[2:]) == prime_bit_length
     ## Check highest bit is 1 to ensure it is a large prime.
     assert prime_bin[2] == '1'
     ## Verify it is prime.
@@ -49,23 +50,41 @@ def verify_safe_prime(prime):
     assert isprime(sophie_germain_prime)
     ## Verify multiplicative generator is the one desired.
     generator = find_generator(prime)
-    assert generator == DESIRED_GENERATOR
+    assert generator == desired_generator
     return generator
 
 
-iteration_count = 1
-safe_prime = None
-generator = None
-while not safe_prime:
-    print('Iteration', iteration_count)
-    # Generate safe prime using OpenSSL.
-    candidate_safe_prime = gensafeprime.generate(PRIME_BIT_LENGTH)
-    try:
-        generator = verify_safe_prime(candidate_safe_prime)
-    except AssertionError:
-        iteration_count += 1
-        continue
-    safe_prime = candidate_safe_prime
-print('Safe prime:', safe_prime)
-print('Safe prime hex:', hex(safe_prime))
-print('Generator:', generator)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Generates large safe primes suitable for use in SRP.'
+    )
+    parser.add_argument(
+        '-g', '--generator',
+        type=int,
+        default=DEFAULT_GENERATOR,
+        help=f'Desired generator (default: {DEFAULT_GENERATOR})'
+    )
+    parser.add_argument(
+        '-p', '--prime-bit-length',
+        type=int,
+        default=DEFAULT_PRIME_BIT_LENGTH,
+        help=f'Prime bit length (default: {DEFAULT_PRIME_BIT_LENGTH})'
+    )
+    args = parser.parse_args()
+
+    iteration_count = 1
+    safe_prime = None
+    generator = None
+    while not safe_prime:
+        print('Iteration', iteration_count)
+        # Generate safe prime using OpenSSL.
+        candidate_safe_prime = gensafeprime.generate(args.prime_bit_length)
+        try:
+            generator = verify_safe_prime(candidate_safe_prime, args.prime_bit_length, args.generator)
+        except AssertionError:
+            iteration_count += 1
+            continue
+        safe_prime = candidate_safe_prime
+    print('Safe prime:', safe_prime)
+    print('Safe prime hex:', hex(safe_prime))
+    print('Generator:', generator)
