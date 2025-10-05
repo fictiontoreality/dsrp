@@ -1,4 +1,4 @@
-import 'hash.dart';
+import 'package:dsrp/hash.dart';
 
 /// Balance between compatibility, speed and security.
 /// FIXME: Should this be bumped up?
@@ -7,7 +7,7 @@ final defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
 /// TODO: Are there better (performance, security) generators?
 final defaultGenerator = BigInt.from(2);
 
-/// 2048-bit safe prime generated using scripts/generate_safe_primes.py.
+/// 2048-bit safe prime generated using scripts/generate_safe_primes.
 ///
 /// IT IS RECOMMENDED TO GENERATE YOUR OWN SAFE PRIMES FOR ADDED SECURITY.
 ///

@@ -1,6 +1,14 @@
 import 'package:dsrp/dsrp.dart';
+import 'package:logging/logging.dart';
 
+/// Demonstrates the major steps of SRP using dsrp.
 void main() async {
+  // Configure logging.
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    print('${record.loggerName} ${record.level.name}: ${record.message}');
+  });
+
   //////////////////////////////
   ///// Registration.
   //////////////////////////////
