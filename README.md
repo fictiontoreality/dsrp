@@ -22,6 +22,7 @@ of man-in-the-middle attacks.
 
 * implements both user and server side of authentication.
 * allows custom safe primes and generators to be used to decrease chance of pre-computed brute force attacks.
+* fully interopable with [pysrp](https://github.com/cocagne/pysrp), a Python SRP library.
 
 ## Getting started
 
@@ -78,28 +79,7 @@ password and break SFC encryption from eons to hours or even minutes.
 
 Thus it is recommended to generate and use your own safe primes.
 
-A Python 3 script is included for generating safe primes. Running it
-requires installing some dependencies then executing the script:
-
-```
-pip3 install gensafeprime sympy
-python3 ./scripts/generate_safe_primes.py
-```
-
-NOTE: This may take less than a second to more than five minutes due
-to the nature of random search, how lucky you are, and how powerful
-your computer is.
-
-By default the script generates a 2048-bit safe prime as an integer
-and hex. It also does some verification:
-- sufficiently large (i.e., the highest bit is 1).
-- it is in fact a safe prime.
-- the generator of the mulitplicative group of integers modulus the
-  safe prime is 2 (you may decide to use a different generator).
-
-You can increase the number of bits or change the desired generator by
-modifying the `PRIME_BIT_LENGTH` and `DESIRED_GENERATOR` respectively
-at the top of the script.
+A Python 3 script is included for generating safe primes. See the [README in `scripts/generate_safe_primes`](scripts/generate_safe_primes/README.md) for details.
 
 ## Additional information
 
