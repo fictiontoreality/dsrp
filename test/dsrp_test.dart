@@ -44,8 +44,71 @@ void main() {
           await authenticate(verifierKey, salt, safePrime: safePrime);
       });
 
-      //TODO: Add test based on RFC5054 test vectors.
-      // https://datatracker.ietf.org/doc/html/rfc5054#appendix-B
+      // RFC5054 Appendix B test vectors - verifies exact compatibility
+      test('matches RFC5054 test vectors with SHA1', () async {
+          // RFC5054 Appendix B test vector.
+          const username = 'alice';
+          const password = 'password123';
+          // Salt from RFC5054 (hex: BEB25379 D1A8581E B5A72767 3A2441EE)
+          const salt = [190, 178, 83, 121, 209, 168, 88, 30, 181, 167, 39, 103, 58, 36, 65, 238];
+
+          // RFC5054 1024-bit group from Appendix A.
+          const generator = 2;
+
+          // Expected verifier from RFC5054.
+          const expectedVerifier = [
+            0x7E, 0x27, 0x3D, 0xE8, 0x69, 0x6F, 0xFC, 0x4F, 0x4E, 0x33, 0x7D, 0x05, 0xB4, 0xB3, 0x75, 0xBE,
+            0xB0, 0xDD, 0xE1, 0x56, 0x9E, 0x8F, 0xA0, 0x0A, 0x98, 0x86, 0xD8, 0x12, 0x9B, 0xAD, 0xA1, 0xF1,
+            0x82, 0x22, 0x23, 0xCA, 0x1A, 0x60, 0x5B, 0x53, 0x0E, 0x37, 0x9B, 0xA4, 0x72, 0x9F, 0xDC, 0x59,
+            0xF1, 0x05, 0xB4, 0x78, 0x7E, 0x51, 0x86, 0xF5, 0xC6, 0x71, 0x08, 0x5A, 0x14, 0x47, 0xB5, 0x2A,
+            0x48, 0xCF, 0x19, 0x70, 0xB4, 0xFB, 0x6F, 0x84, 0x00, 0xBB, 0xF4, 0xCE, 0xBF, 0xBB, 0x16, 0x81,
+            0x52, 0xE0, 0x8A, 0xB5, 0xEA, 0x53, 0xD1, 0x5C, 0x1A, 0xFF, 0x87, 0xB2, 0xB9, 0xDA, 0x6E, 0x04,
+            0xE0, 0x58, 0xAD, 0x51, 0xCC, 0x72, 0xBF, 0xC9, 0x03, 0x3B, 0x56, 0x4E, 0x26, 0x48, 0x0D, 0x78,
+            0xE9, 0x55, 0xA5, 0xE2, 0x9E, 0x7A, 0xB2, 0x45, 0xDB, 0x2B, 0xE3, 0x15, 0xE2, 0x09, 0x9A, 0xFB,
+          ];
+
+          // Create verifier using SHA1 (as per RFC5054).
+          final saltedVerificationKey = await User.createSaltedVerificationKey(
+            userId: username,
+            password: password,
+            generator: generator,
+            safePrime: safePrime,
+            hashAlgorithm: HashAlgorithmChoice.sha1,
+            salt: salt,
+          );
+
+          // Check that the verifier matches RFC5054.
+          expect(saltedVerificationKey.key, expectedVerifier);
+
+          // Verify full authentication workflow works.
+          final server = Server(
+            userId: username,
+            salt: saltedVerificationKey.salt,
+            verifierKey: saltedVerificationKey.key,
+            generator: BigInt.from(generator),
+            safePrime: safePrime,
+            hashAlgorithm: HashAlgorithmChoice.sha1,
+          );
+
+          final challenge = await server.createChallenge();
+
+          final user = await User.fromUserCredsAndChallenge(
+            userId: username,
+            password: password,
+            challenge: challenge,
+          );
+
+          final userSessionVerifiers = user.getUserSessionVerifiers();
+
+          final serverSessionKeyVerifier = await server.verifySession(
+            ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+            userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+          );
+
+          await user.verifySession(serverSessionKeyVerifier);
+
+          expect(user.sessionKey, server.sessionKey);
+      });
 
       //TODO: Add tests for user and server attack scenarios.
   });
