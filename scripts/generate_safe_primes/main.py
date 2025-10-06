@@ -5,8 +5,8 @@ from sympy.ntheory import isprime, primefactors
 import gensafeprime
 
 # Default parameters
-DEFAULT_PRIME_BIT_LENGTH = 2048
-DEFAULT_GENERATOR = 2
+DEFAULT_PRIME_BIT_LENGTH = 4096
+DEFAULT_DESIRED_GENERATOR = 2
 
 # Set the max generator of the multiplicative group to search for.
 # Avoids an infinite loop when finding the generator.
@@ -21,14 +21,14 @@ def main():
     parser.add_argument(
         '-g', '--generator',
         type=int,
-        default=DEFAULT_GENERATOR,
-        help=f'Desired generator (default: {DEFAULT_GENERATOR})'
+        default=DEFAULT_DESIRED_GENERATOR,
+        help=f'Desired generator of a large subgroup (default: {DEFAULT_DESIRED_GENERATOR})'
     )
     parser.add_argument(
         '-p', '--prime-bit-length',
         type=int,
         default=DEFAULT_PRIME_BIT_LENGTH,
-        help=f'Prime bit length (default: {DEFAULT_PRIME_BIT_LENGTH})'
+        help=f'Safe prime bit length (default: {DEFAULT_PRIME_BIT_LENGTH})'
     )
     args = parser.parse_args()
 

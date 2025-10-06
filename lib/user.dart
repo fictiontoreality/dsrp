@@ -145,6 +145,7 @@ class User {
     );
   }
 
+  //TODO: Add support for the Argon2 hash algorithm.
   // Future<SaltedVerificationKey> createSaltedVerificationKeyWithArgon2() async {
   //   //TODO: How big should the salt be?
   //   final salt = List<int>.generate(128, (index) => random.nextInt(256));
