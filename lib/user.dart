@@ -1,6 +1,6 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart';
-import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime;
+import 'package:dsrp/defaults.dart' show defaultByteLengthForEphemeralKeys, defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
 import 'package:dsrp/hash.dart';
 import 'package:dsrp/rfc5054.dart';
@@ -127,13 +127,12 @@ class User {
       List<int>? salt
   }) async {
     final generatorBigInt = generator != null ? BigInt.from(generator) : defaultGenerator;
-    final safePrimeBigInt = safePrime != null ? safePrime.toBigInt() : defaultSafePrime;
+    final safePrimeBigInt = safePrime?.toBigInt() ?? defaultSafePrime;
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
     final chosenHashAlgorithm = getHashAlgorithm(hashAlgorithm ?? defaultHashAlgorithmChoice);
-    //OPTIMIZE: How big should the salt be?
-    salt ??= generateRandomBytes(128);
+    salt ??= generateRandomBytes(defaultSaltByteLengthForSaltedVerificationKey);
 
     final privateKey = await _derivePrivateKey(userId: userId, password: password,
       salt: salt, hashAlgorithm: chosenHashAlgorithm);
@@ -181,7 +180,7 @@ class User {
   /// during SRP login and then discarded.
   _generateEphemeralUserAsymmetricKeys({List<int>? ephemeralUserPrivateKeyBytes}) {
     //TODO: How big should private user and server keys be?
-    ephemeralUserPrivateKeyBytes ??= generateRandomBytes(32);
+    ephemeralUserPrivateKeyBytes ??= generateRandomBytes(defaultByteLengthForEphemeralKeys);
     _ephemeralUserPrivateKey = ephemeralUserPrivateKeyBytes.toBigInt();
     // A = g^a
     final publicKey = generator.modPow(_ephemeralUserPrivateKey!, safePrime);

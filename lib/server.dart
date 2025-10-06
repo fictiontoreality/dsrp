@@ -1,6 +1,6 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart' show HashAlgorithm;
-import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime;
+import 'package:dsrp/defaults.dart' show defaultByteLengthForEphemeralKeys, defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
 import 'package:dsrp/hash.dart';
 import 'package:dsrp/rfc5054.dart';
@@ -75,7 +75,7 @@ class Server {
 
   /// Create verification challenge to send to user.
   Future<Challenge> createChallenge({List<int>? ephemeralServerPrivateKeyBytes}) async {
-    ephemeralServerPrivateKeyBytes ??= generateRandomBytes(32);
+    ephemeralServerPrivateKeyBytes ??= generateRandomBytes(defaultByteLengthForEphemeralKeys);
     ephemeralServerPrivateKey = ephemeralServerPrivateKeyBytes.toBigInt();
     // k = H(N,g)
     final multiplierParameter = (await _hashRfc5054(

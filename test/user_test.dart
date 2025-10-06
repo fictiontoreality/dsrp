@@ -1,3 +1,4 @@
+import 'package:dsrp/defaults.dart';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
@@ -27,8 +28,8 @@ void main() {
             userId: username, password: password,
             generator: generator, safePrime: safePrime);
 
-          expect(verifierKey1.salt.length, 128);
-          expect(verifierKey2.salt.length, 128);
+          expect(verifierKey1.salt.length, defaultSaltByteLengthForSaltedVerificationKey);
+          expect(verifierKey2.salt.length, defaultSaltByteLengthForSaltedVerificationKey);
           expect(verifierKey1.salt, isNot(equals(verifierKey2.salt)));
           expect(verifierKey1.key, isNot(equals(verifierKey2.key)));
       });
