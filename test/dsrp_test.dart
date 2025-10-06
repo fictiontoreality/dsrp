@@ -44,7 +44,7 @@ void main() {
           await authenticate(verifierKey, salt, safePrime: safePrime);
       });
 
-      // RFC5054 Appendix B test vectors - verifies exact compatibility
+      // Verifies exact compatibility with RFC5054.
       test('matches RFC5054 test vectors with SHA1', () async {
           // RFC5054 Appendix B test vector.
           const username = 'alice';
@@ -110,7 +110,199 @@ void main() {
           expect(user.sessionKey, server.sessionKey);
       });
 
-      //TODO: Add tests for user and server attack scenarios.
+      group('attack scenario tests', () {
+          test('server rejects invalid user public key (A = 0 mod N)', () async {
+              final saltedVerificationKey = await User.createSaltedVerificationKey(
+                userId: username, password: password,
+                generator: generator, safePrime: safePrime,
+              );
+
+              final server = Server(
+                userId: username,
+                salt: saltedVerificationKey.salt,
+                verifierKey: saltedVerificationKey.key,
+                generator: BigInt.from(generator),
+                safePrime: safePrime,
+              );
+
+              await server.createChallenge();
+
+              // Attack: Send A = N (which is 0 mod N).
+              final invalidUserPublicKey = safePrime;
+
+              expect(
+                server.deriveSessionKey(ephemeralUserPublicKey: invalidUserPublicKey),
+                throwsA(isA<AuthenticationFailure>()),
+              );
+          });
+
+          test('user rejects invalid server public key (B = 0 mod N)', () async {
+              const salt = [1, 2, 3, 4];
+
+              // Create a challenge with invalid server public key.
+              final challenge = Challenge(
+                generator: generator,
+                safePrime: safePrime,
+                ephemeralServerPublicKey: safePrime, // B = N (0 mod N)
+                verifierKeySalt: salt,
+                hashAlgorithm: hashAlgorithmChoice,
+              );
+
+              // Attack: User tries to process challenge with invalid B.
+              expect(
+                User.fromUserCredsAndChallenge(
+                  userId: username,
+                  password: password,
+                  challenge: challenge,
+                ),
+                throwsA(anything),
+              );
+          });
+
+          test('authentication fails with wrong password', () async {
+              final saltedVerificationKey = await User.createSaltedVerificationKey(
+                userId: username, password: password,
+                generator: generator, safePrime: safePrime,
+              );
+
+              final server = Server(
+                userId: username,
+                salt: saltedVerificationKey.salt,
+                verifierKey: saltedVerificationKey.key,
+                generator: BigInt.from(generator),
+                safePrime: safePrime,
+              );
+
+              final challenge = await server.createChallenge();
+
+              // Attack: User uses wrong password.
+              final user = await User.fromUserCredsAndChallenge(
+                userId: username,
+                password: 'wrongpassword',
+                challenge: challenge,
+              );
+
+              final userSessionVerifiers = user.getUserSessionVerifiers();
+
+              // Server should reject the session key verifier.
+              expect(
+                server.verifySession(
+                  ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+                  userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+                ),
+                throwsA(isA<AuthenticationFailure>()),
+              );
+          });
+
+          test('user rejects tampered server session key verifier', () async {
+              final saltedVerificationKey = await User.createSaltedVerificationKey(
+                userId: username, password: password,
+                generator: generator, safePrime: safePrime,
+              );
+
+              final server = Server(
+                userId: username,
+                salt: saltedVerificationKey.salt,
+                verifierKey: saltedVerificationKey.key,
+                generator: BigInt.from(generator),
+                safePrime: safePrime,
+              );
+
+              final challenge = await server.createChallenge();
+
+              final user = await User.fromUserCredsAndChallenge(
+                userId: username,
+                password: password,
+                challenge: challenge,
+              );
+
+              final userSessionVerifiers = user.getUserSessionVerifiers();
+
+              final serverSessionKeyVerifier = await server.verifySession(
+                ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+                userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+              );
+
+              // Attack: Tamper with server's session key verifier
+              final tamperedVerifier = serverSessionKeyVerifier + [1, 2, 3];
+
+              expect(
+                user.verifySession(tamperedVerifier),
+                throwsA(isA<AuthenticationFailure>()),
+              );
+          });
+
+          test('server rejects tampered user session key verifier', () async {
+              final saltedVerificationKey = await User.createSaltedVerificationKey(
+                userId: username, password: password,
+                generator: generator, safePrime: safePrime,
+              );
+
+              final server = Server(
+                userId: username,
+                salt: saltedVerificationKey.salt,
+                verifierKey: saltedVerificationKey.key,
+                generator: BigInt.from(generator),
+                safePrime: safePrime,
+              );
+
+              final challenge = await server.createChallenge();
+
+              final user = await User.fromUserCredsAndChallenge(
+                userId: username,
+                password: password,
+                challenge: challenge,
+              );
+
+              final userSessionVerifiers = user.getUserSessionVerifiers();
+
+              // Attack: Tamper with user's session key verifier
+              final tamperedVerifier = userSessionVerifiers.sessionKeyVerifier + [9, 9, 9];
+
+              expect(
+                server.verifySession(
+                  ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+                  userSessionKeyVerifier: tamperedVerifier,
+                ),
+                throwsA(isA<AuthenticationFailure>()),
+              );
+          });
+
+          test('authentication fails with wrong username', () async {
+              final saltedVerificationKey = await User.createSaltedVerificationKey(
+                userId: username, password: password,
+                generator: generator, safePrime: safePrime,
+              );
+
+              final server = Server(
+                userId: username,
+                salt: saltedVerificationKey.salt,
+                verifierKey: saltedVerificationKey.key,
+                generator: BigInt.from(generator),
+                safePrime: safePrime,
+              );
+
+              final challenge = await server.createChallenge();
+
+              // Attack: User claims different username.
+              final user = await User.fromUserCredsAndChallenge(
+                userId: 'wrong username',
+                password: password,
+                challenge: challenge,
+              );
+
+              final userSessionVerifiers = user.getUserSessionVerifiers();
+
+              // Server should reject because username doesn't match.
+              expect(
+                server.verifySession(
+                  ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+                  userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+                ),
+                throwsA(isA<AuthenticationFailure>()),
+              );
+          });
+      });
   });
 
 
