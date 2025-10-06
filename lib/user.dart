@@ -52,7 +52,6 @@ class User {
   /// Typically denoted 'N'.
   /// By definition a safe prime N = 2q + 1, where q is a Sophie Germain prime.
   /// All arithmetic is performed in the field of integers modulo N.
-  /// TODO: Generate N.
   final BigInt safePrime;
 
   // final List<int> _ephemeralServerPublicKey;
@@ -102,21 +101,6 @@ class User {
   }): _verifierKeySalt = verifierKeySalt,
     _hashAlgorithm = getHashAlgorithm(hashAlgorithm);
 
-  // _verifierKeySalt = challenge.verifierKeySalt
-  // {
-  //   // if (serverChallenge != null) {
-  //     // generator = BigInt.from(serverChallenge.generator);
-  //     // safePrime = serverChallenge.safePrime.toBigInt();
-  //     // hashAlgorithm =
-  //   // } else {
-  //     // this.generator = generator != null ? BigInt.from(generator) : defaultGenerator;
-  //     // this.safePrime = safePrime != null ? safePrime.toBigInt() : defaultSafePrime;
-  //     //FIXME: Should this be provided in server challenge?
-  //     // hashAlgorithm = hashAlgorithm ?? defaultHashAlgorithm;
-  //   // }
-
-  // }
-
   /// Creates salted verification key.
   ///
   /// Pass this data to server as part of user registration request.
@@ -147,9 +131,7 @@ class User {
 
   //TODO: Add support for the Argon2 hash algorithm.
   // Future<SaltedVerificationKey> createSaltedVerificationKeyWithArgon2() async {
-  //   //TODO: How big should the salt be?
   //   final salt = List<int>.generate(128, (index) => random.nextInt(256));
-  //   //TODO: Hash alg should be specifiable.
   //   final argon2id = Argon2id(
   //     //OPTIMIZE: What should these values be?
   //     parallelism: 3,
@@ -160,7 +142,6 @@ class User {
   //   // Private key (as defined by RFC 5054)
   //   // x = H(s, H( I | ‘:’ | p ))
   //   var privateKey = await argon2id.deriveKey(
-  //     //TODO: How should this secret key be formatted?
   //     secretKey: SecretKey(utf8.encode('$userId:$password')),
   //     nonce: [],
   //   );
@@ -180,7 +161,6 @@ class User {
   /// Generates ephemeral user public and private keys which are used only
   /// during SRP login and then discarded.
   _generateEphemeralUserAsymmetricKeys({List<int>? ephemeralUserPrivateKeyBytes}) {
-    //TODO: How big should private user and server keys be?
     ephemeralUserPrivateKeyBytes ??= generateRandomBytes(defaultByteLengthForEphemeralKeys);
     _ephemeralUserPrivateKey = ephemeralUserPrivateKeyBytes.toBigInt();
     // A = g^a
@@ -247,7 +227,6 @@ class User {
       required List<int> salt, required HashAlgorithm hashAlgorithm
   }) async {
     var privateKeyHash = await hashAlgorithm.hash(
-        //TODO: How should this be formatted?
         utf8.encode('$userId:$password'));
     privateKeyHash = await hashAlgorithm.hash(salt + privateKeyHash.bytes);
     final privateKey = privateKeyHash.bytes.toBigInt();

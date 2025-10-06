@@ -95,7 +95,9 @@ class Server {
 
   /// Derive session key from user public key.
   ///
-  /// NOTE: This should only be called if your SRP usage involves decrypting the user session key verifier using the session key. Regardless, you still need to verify the session key before considering the session verified.
+  /// NOTE: This should only be called if your SRP usage involves decrypting the
+  /// user session key verifier using the session key. Regardless, you still
+  /// need to verify the session key before considering the session verified.
   Future<List<int>> deriveSessionKey({required List<int> ephemeralUserPublicKey}) async {
     if (ephemeralUserPublicKey.toBigInt() % safePrime == BigInt.zero) {
       throw AuthenticationFailure('Invalid ephemeral user public key.');
@@ -137,7 +139,7 @@ class Server {
     return serverSessionKeyVerifier;
   }
 
-  ///TODO: Merge with User.processChallenge?
+  //TODO: Merge with User.processChallenge?
   /// M1 = H(H(N) xor H(g), H(I), s, A, B, K)
   Future<List<int>> _deriveUserSessionKeyVerifier(List<int> ephemeralUserPublicKey) async {
     // H(N)
