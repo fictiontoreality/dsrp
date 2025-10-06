@@ -1,9 +1,6 @@
 import 'dart:math' show Random;
 import 'dart:typed_data' show Endian, Uint8List;
 
-//TODO: OK to reuse?
-final random = Random.secure();
-
 /// Convert byte list to int.
 int convertByteListToInt(List<int> bytes) {
   return Uint8List.fromList(bytes).buffer.asByteData().getInt64(0);
@@ -44,8 +41,10 @@ List<int> convertBigIntToByteList(BigInt number) {
   return result;
 }
 
-/// Generate bytes with random values.
+/// Generate bytes with a cryptographically secure pseudorandom number
+/// generator (CSPRNG).
 List<int> generateRandomBytes(int bytesCount) {
+  final random = Random.secure();
   return List<int>.generate(bytesCount, (index) => random.nextInt(256));
 }
 

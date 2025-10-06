@@ -30,6 +30,8 @@ class Challenge {
 }
 
 /// Operations the server / host performs to authenticate a user via SRP.
+///
+/// Designed to mimic the API of Python's pysrp library.
 class Server {
   /// User identifier.
   final String userId;

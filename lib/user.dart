@@ -34,9 +34,9 @@ class UserSessionVerifiers {
 }
 
 /// Operations the user / client performs to authenticate with a server via SRP.
+///
+/// Designed to mimic the API of Python's pysrp library.
 class User {
-  //TODO: Goal here is to mimic pysrp. So probably mimic its API until you get a
-  // better sense.
 
   /// User identifier.
   final String userId;

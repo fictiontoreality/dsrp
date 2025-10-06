@@ -1,10 +1,18 @@
 import 'package:dsrp/hash.dart';
 
 /// Balance between compatibility, speed and security.
-/// FIXME: Should this be bumped up?
+///
+/// No performance penalty on 32-bit systems, unlike SHA512. Avoids SHA1
+/// vulnerability to pre-image attacks that could eventually be exploited in a
+/// brute-force-on-the-verifier scenario.
 final defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
 
-/// TODO: Are there better (performance, security) generators?
+/// 2 is the standard generator from RFC5054.
+///
+/// Computationally efficient (just a left shift). Does not have to match the
+/// generator used to create the safe prime. You must verify g^q mod p ≠ 1
+/// (where g = this generator, p = large safe prime, q = (p-1)/2) to ensure it
+/// is a generator of the large order-q subgroup.
 final defaultGenerator = BigInt.from(2);
 
 /// 2048-bit safe prime generated using scripts/generate_safe_primes.
