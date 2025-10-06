@@ -49,7 +49,6 @@ print('salt, verifier_key:', list(salt), list(verifier_key))
 # print('ephemeralPrivateUserKey:', list(user.get_ephemeral_secret()))
 # print('ephemeralPublicUserKey:', list(ephemeralPublicUserKey))
 
-#TODO: create new default salt and verifier key.
 server = srp.Verifier(USERNAME, salt, verifier_key,
                       # bytes_A=ephemeralPublicUserKey,
                       hash_alg=srp.SHA256,

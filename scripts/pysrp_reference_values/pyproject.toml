@@ -1,0 +1,10 @@
+[project]
+name = "pysrp_reference_values"
+version = "0.1.0"
+description = "Use pysrp to generate reference values for Dart tests."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "ipdb>=0.13.13",
+    "srp>=1.0.22",
+]
