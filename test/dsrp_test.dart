@@ -73,7 +73,7 @@ void main() {
             password: password,
             generator: generator,
             safePrime: safePrime,
-            hashAlgorithm: HashAlgorithmChoice.sha1,
+            kdfAlgorithm: KdfAlgorithmChoice.sha1,
             salt: salt,
           );
 
@@ -96,6 +96,7 @@ void main() {
             userId: username,
             password: password,
             challenge: challenge,
+            kdfAlgorithm: KdfAlgorithmChoice.sha1,
           );
 
           final userSessionVerifiers = user.getUserSessionVerifiers();

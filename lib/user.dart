@@ -1,8 +1,9 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart';
-import 'package:dsrp/defaults.dart' show defaultByteLengthForEphemeralKeys, defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey;
+import 'package:dsrp/defaults.dart' show defaultByteLengthForEphemeralKeys, defaultGenerator, defaultKdfAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
 import 'package:dsrp/hash.dart';
+import 'package:dsrp/kdf.dart';
 import 'package:dsrp/rfc5054.dart';
 import 'package:dsrp/server.dart' show Challenge;
 import 'package:dsrp/util.dart';
@@ -45,6 +46,9 @@ class User {
   final HashAlgorithmChoice hashAlgorithm;
   /// Hash algorithm used during SRP key and verifier calculations (e.g., SHA256).
   final HashAlgorithm _hashAlgorithm;
+  final KdfAlgorithmChoice kdfAlgorithm;
+  /// KDF algorithm used to derive user private key.
+  final KdfAlgorithm _kdfAlgorithm;
   /// A generator modulo N.
   /// Typically denoted 'g'.
   final BigInt generator;
@@ -75,6 +79,7 @@ class User {
     required String userId,
     required String password,
     required Challenge challenge,
+    final KdfAlgorithmChoice? kdfAlgorithm,
     final List<int>? ephemeralUserPrivateKey,
   }) async {
     final user = User._(
@@ -83,6 +88,7 @@ class User {
       safePrime: challenge.safePrime.toBigInt(),
       verifierKeySalt: challenge.verifierKeySalt,
       hashAlgorithm: challenge.hashAlgorithm,
+      kdfAlgorithm: kdfAlgorithm ?? defaultKdfAlgorithmChoice,
     );
     user._generateEphemeralUserAsymmetricKeys(
       ephemeralUserPrivateKeyBytes: ephemeralUserPrivateKey);
@@ -98,8 +104,10 @@ class User {
     required this.safePrime,
     required List<int> verifierKeySalt,
     required this.hashAlgorithm,
+    required this.kdfAlgorithm,
   }): _verifierKeySalt = verifierKeySalt,
-    _hashAlgorithm = getHashAlgorithm(hashAlgorithm);
+    _hashAlgorithm = getHashAlgorithm(hashAlgorithm),
+    _kdfAlgorithm = getKdfAlgorithm(kdfAlgorithm);
 
   /// Creates salted verification key.
   ///
@@ -107,7 +115,7 @@ class User {
   static Future<SaltedVerificationKey> createSaltedVerificationKey({
       required String userId, required String password,
       int? generator, List<int>? safePrime,
-      HashAlgorithmChoice? hashAlgorithm,
+      KdfAlgorithmChoice? kdfAlgorithm,
       List<int>? salt
   }) async {
     final generatorBigInt = generator != null ? BigInt.from(generator) : defaultGenerator;
@@ -115,11 +123,10 @@ class User {
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
-    final chosenHashAlgorithm = getHashAlgorithm(hashAlgorithm ?? defaultHashAlgorithmChoice);
+    final chosenKdfAlgorithm = getKdfAlgorithm(kdfAlgorithm ?? defaultKdfAlgorithmChoice);
     salt ??= generateRandomBytes(defaultSaltByteLengthForSaltedVerificationKey);
-
     final privateKey = await _derivePrivateKey(userId: userId, password: password,
-      salt: salt, hashAlgorithm: chosenHashAlgorithm);
+      salt: salt, kdfAlgorithm: chosenKdfAlgorithm);
     final verifierKey = _deriveVerificationKey(privateKey: privateKey,
       generator: generatorBigInt, safePrime: safePrimeBigInt);
     final verifierKeyBytes = verifierKey.toByteList();
@@ -128,35 +135,6 @@ class User {
       salt: salt,
     );
   }
-
-  //TODO: Add support for the Argon2 hash algorithm.
-  // Future<SaltedVerificationKey> createSaltedVerificationKeyWithArgon2() async {
-  //   final salt = List<int>.generate(128, (index) => random.nextInt(256));
-  //   final argon2id = Argon2id(
-  //     //OPTIMIZE: What should these values be?
-  //     parallelism: 3,
-  //     memorySize: 10000000,
-  //     iterations: 3,
-  //     hashLength: 32,
-  //   );
-  //   // Private key (as defined by RFC 5054)
-  //   // x = H(s, H( I | ‘:’ | p ))
-  //   var privateKey = await argon2id.deriveKey(
-  //     secretKey: SecretKey(utf8.encode('$userId:$password')),
-  //     nonce: [],
-  //   );
-  //   privateKey = await argon2id.deriveKey(
-  //     secretKey: privateKey,
-  //     nonce: salt,
-  //   );
-  //   final privateKeyInt = (await privateKey.extractBytes()).toBigInt();
-  //   final verifierKey = generator.modPow(privateKeyInt, safePrime);
-  //   final verifierKeyBytes = verifierKey.toByteList();
-  //   return SaltedVerificationKey(
-  //     key: verifierKeyBytes,
-  //     salt: salt,
-  //   );
-  // }
 
   /// Generates ephemeral user public and private keys which are used only
   /// during SRP login and then discarded.
@@ -220,17 +198,30 @@ class User {
     }
   }
 
-  /// Private key (as defined by RFC 5054).
+  /// Private key.
+  /// 
+  /// RFC 5054 defines an unusual hash-based KDF:
+  ///
   /// x = H(s, H( I | ‘:’ | p ))
+  ///
+  /// While fast, this KDF is not secure against brute-force extraction of the
+  /// password from the verifier, and a stronger (i.e., slower) KDF is
+  /// recommended.
   static Future<BigInt> _derivePrivateKey({
       required String userId, required String password,
-      required List<int> salt, required HashAlgorithm hashAlgorithm
+      required List<int> salt, required KdfAlgorithm kdfAlgorithm
   }) async {
-    var privateKeyHash = await hashAlgorithm.hash(
-        utf8.encode('$userId:$password'));
-    privateKeyHash = await hashAlgorithm.hash(salt + privateKeyHash.bytes);
-    final privateKey = privateKeyHash.bytes.toBigInt();
-    return privateKey;
+    //TODO: Make user ID in private key optional since it prevents users from
+    // changing user names (e.g., email) without regenerating their verifier.
+    // Also encourage using server-generated immutable IDs for userId, not their
+    // email or written username.
+    final privateKey = await kdfAlgorithm.deriveKeyFromPassword(
+      // password: password,
+      password: '$userId:$password',
+      nonce: salt,
+    );
+    final privateKeyBytes = await privateKey.extractBytes();
+    return privateKeyBytes.toBigInt();
   }
 
   /// Password verifier, a.k.a. verification key.
@@ -252,7 +243,7 @@ class User {
     final privateKey = await _derivePrivateKey(
       userId: userId, password: password,
       salt: _verifierKeySalt,
-      hashAlgorithm: _hashAlgorithm,
+      kdfAlgorithm: _kdfAlgorithm,
     );
     // v = g^x
     final verifierKey = _deriveVerificationKey(

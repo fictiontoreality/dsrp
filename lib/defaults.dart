@@ -1,4 +1,5 @@
 import 'package:dsrp/hash.dart';
+import 'package:dsrp/kdf.dart';
 
 /// Balance between compatibility, speed and security.
 ///
@@ -6,6 +7,12 @@ import 'package:dsrp/hash.dart';
 /// vulnerability to pre-image attacks that could eventually be exploited in a
 /// brute-force-on-the-verifier scenario.
 final defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
+
+/// Intentionally slow and memory intensive to optimize for protection from
+/// brute-force attempts to derive the password from the verifier.
+final defaultKdfAlgorithmChoice = KdfAlgorithmChoice.sha256;
+//TODO: Switch default to Argon2id.
+// final defaultKdfAlgorithmChoice = KdfAlgorithmChoice.arg2id;
 
 /// 2 is the standard generator from RFC5054.
 ///
