@@ -10,9 +10,7 @@ final defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
 
 /// Intentionally slow and memory intensive to optimize for protection from
 /// brute-force attempts to derive the password from the verifier.
-final defaultKdfAlgorithmChoice = KdfAlgorithmChoice.sha256;
-//TODO: Switch default to Argon2id.
-// final defaultKdfAlgorithmChoice = KdfAlgorithmChoice.arg2id;
+final defaultKdfAlgorithmChoice = KdfAlgorithmChoice.argon2id;
 
 /// 2 is the standard generator from RFC5054.
 ///

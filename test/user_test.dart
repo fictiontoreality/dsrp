@@ -15,6 +15,7 @@ void main() {
           final verifierKey = await User.createSaltedVerificationKey(
             userId: username, password: password,
             generator: generator, safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
             salt: salt);
           expect(verifierKey.salt, salt);
           expect(verifierKey.key, expectedVerifierKey);
@@ -59,6 +60,7 @@ void main() {
       setUp(() async {
           user = await User.fromUserCredsAndChallenge(
             userId: username, password: password, challenge: challenge,
+            kdfAlgorithm: kdfAlgorithmChoice,
             ephemeralUserPrivateKey: userPrivateKey
           );
       });

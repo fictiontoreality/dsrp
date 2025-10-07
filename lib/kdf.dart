@@ -2,17 +2,27 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
+//TODO: Allow custom hash and KDF algorithms - this would require creating a
+// interface similar to that of cryptography lib (but not the exact interface so
+// that the backend crypto lib can be swapped as needed).
+
+/// Choice of key derivation function (KDF) used to derive user private key.
+/// 
+/// Prefer a slower algorithm like Argon2id to significantly reduce the
+/// likelihood of a brute-force attempt to extract the password from
+/// the verifier.
 enum KdfAlgorithmChoice {
-  arg2id,
+  argon2id,
   sha1,
   sha256,
   sha512,
 }
 
 final _kdfChoiceToAlgorithm = <KdfAlgorithmChoice, KdfAlgorithm>{
-  KdfAlgorithmChoice.arg2id: Argon2id(
-    //TODO: Double check these values.
-    parallelism: 1,
+  KdfAlgorithmChoice.argon2id: Argon2id(
+    // These values balance high security standards with speed
+    // and wide device support.
+    parallelism: 4,
     memory: 65536, // 64 MB
     iterations: 3,
     hashLength: 32,
