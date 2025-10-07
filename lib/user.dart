@@ -6,7 +6,8 @@ import 'package:dsrp/hash.dart';
 import 'package:dsrp/kdf.dart';
 import 'package:dsrp/rfc5054.dart';
 import 'package:dsrp/server.dart' show Challenge;
-import 'package:dsrp/util.dart';
+import 'package:dsrp/util/bytes.dart';
+import 'package:dsrp/util/collections.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('dsrp.User');
@@ -193,7 +194,7 @@ class User {
     final expectedServerSessionKeyVerifier = (await _hashAlgorithm.hash(
         _ephemeralUserPublicKeyBytes! + _userSessionKeyVerifier + sessionKey
     )).bytes;
-    if (!serverSessionKeyVerifier.equals(expectedServerSessionKeyVerifier)) {
+    if (!serverSessionKeyVerifier.shallowEquals(expectedServerSessionKeyVerifier)) {
       throw AuthenticationFailure('Server session key failed verification.');
     }
   }

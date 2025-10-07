@@ -4,7 +4,8 @@ import 'package:dsrp/defaults.dart' show defaultByteLengthForEphemeralKeys, defa
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
 import 'package:dsrp/hash.dart';
 import 'package:dsrp/rfc5054.dart';
-import 'package:dsrp/util.dart';
+import 'package:dsrp/util/bytes.dart';
+import 'package:dsrp/util/collections.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('dsrp.Server');
@@ -128,7 +129,7 @@ class Server {
     // Verify user session key.
     final expectedUserSessionKeyVerifier = await _deriveUserSessionKeyVerifier(
       ephemeralUserPublicKey);
-    if (!expectedUserSessionKeyVerifier.equals(userSessionKeyVerifier)) {
+    if (!expectedUserSessionKeyVerifier.shallowEquals(userSessionKeyVerifier)) {
       throw AuthenticationFailure('User session key failed verification.');
     }
     // Create server verifier key.

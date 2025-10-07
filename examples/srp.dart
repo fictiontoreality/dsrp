@@ -8,22 +8,51 @@ void main() async {
   Logger.root.onRecord.listen((record) {
     print('${record.loggerName} ${record.level.name}: ${record.message}');
   });
+  final log = Logger('srp.Example');
 
   //////////////////////////////
   ///// Registration.
   //////////////////////////////
-  // 0 (optional). User requests from server basic SRP primitives (e.g., ). Alternatively, user and server could hardcode them beforehand, or else user could dictate the primitives to the server.
+  log.info('///// USER REGISTRATION BEGINS /////');
+
+  // 0 (optional). User requests from server basic SRP primitives (e.g., safe
+  // prime and generator).
+  // 
+  // Alternatively, user and server could hardcode them beforehand, or the user
+  // could dictate the primitives to the server.
+  //
   // User and/or server should verify SRP primitives received are secure.
-  // FIXME: Provide methods for verifying primality, etc. See prime generation script.
+  // 
+  // In production, you should generate custom safe primes using
+  // scripts/generate_safe_primes.py to reduce vulnerability to pre-computed
+  // attacks on standard primes.
+  log.info('(optional) User requested SRP primitives from server.');
+  final safePrime = BigInt.parse('EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3', radix: 16);
+  final generator = BigInt.from(2);
+  final expectedSafePrimeBitLength = 1024;
+
+  log.info('User is verifying safe prime and generator (this may take a few seconds)...');
+  verifySafePrime(safePrime, expectedSafePrimeBitLength);
+  log.info('✓ Safe prime is valid');
+
+  verifyGenerator(generator, safePrime);
+  log.info('✓ Generator is valid');
 
   // 1. User generates a salted verification key based on user ID and password.
   final userId = "fakeuserid";
   final password = "fakepassword";
   final saltedVerificationKey = await User.createSaltedVerificationKey(
-    userId: userId, password: password);
+    userId: userId, password: password,
+    generator: generator.toInt(),
+    safePrime: safePrime.toByteList(),
+  );
 
   // 2. The salted verification key is sent to the server, along with user ID,
   // to register the user for later authentication.
+  log.info('User began registration by creating a salted verification key and sending it to the server.');
+  log.info('Server stored salted verification key for future authentication.');
+  log.info('///// USER REGISTRATION COMPLETE /////');
+
 
   //////////////////////////////
   ///// Authentication.
@@ -31,12 +60,17 @@ void main() async {
   // 1. To initiate login, the user requests a challenge from the server by
   // sending the user ID. The server retrieves the salted verification key in
   // order to create the challenge.
+  log.info('///// AUTHENTICATION BEGINS /////');
+  log.info('User began authentication by requesting a challenge from the server.');
   final server = Server(
     userId: userId,
     salt: saltedVerificationKey.salt,
-    verifierKey: saltedVerificationKey.key
+    verifierKey: saltedVerificationKey.key,
+    generator: generator,
+    safePrime: safePrime.toByteList()
   );
   final challenge = await server.createChallenge();
+  log.info('Server created a challenge and sent it to the user.');
 
   // 2. The user processes the challenge to generate a session key and its
   // verifiers.
@@ -45,6 +79,7 @@ void main() async {
   final userSessionVerifiers = user.getUserSessionVerifiers();
 
   // 3. The user-derived verifiers are sent to the server.
+  log.info('User generated a session key and sent its verifiers to the server.');
 
   // 4. The server verifies the user session key and responds with a session-key
   // encrypted message containing its own verifier.
@@ -57,10 +92,13 @@ void main() async {
   final serverSessionKeyVerifier = await server.verifySession(
     ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
     userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier);
+  log.info('Server verified session and generated a session verifier, sent it to the user.');
 
   // 5. The user verifies the server session key. Throws an exception if verification fails.
   await user.verifySession(serverSessionKeyVerifier);
 
   // 6. User and server are now mutually authenticated and can continue using
   // the shared SRP session key to encrypt messages for this user session.
+  log.info('User verified session and now SRP-encrypted communication can begin.');
+  log.info('///// AUTHENTICATION COMPLETE /////');
 }

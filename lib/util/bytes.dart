@@ -1,3 +1,6 @@
+/// Bytes utilities: conversion, generation, etc.
+library;
+
 import 'dart:math' show Random;
 import 'dart:typed_data' show Endian, Uint8List;
 
@@ -31,11 +34,17 @@ BigInt convertByteListToBigInt(List<int> bytes) {
 /// Source: https://github.com/dart-lang/sdk/issues/32803#issuecomment-1228291047
 List<int> convertBigIntToByteList(BigInt number) {
   // Not handling negative numbers. Decide how you want to do that.
-  int bytes = (number.bitLength + 7) >> 3;
+  int byteCount = (number.bitLength + 7) >> 3;
+
+  // Special case: zero should be represented as [0], not [].
+  if (byteCount == 0) {
+    return [0];
+  }
+
   var b256 = BigInt.from(256);
-  var result = Uint8List(bytes);
-  for (int i = 0; i < bytes; i++) {
-    result[bytes - 1 - i] = number.remainder(b256).toInt();
+  var result = Uint8List(byteCount);
+  for (int i = 0; i < byteCount; i++) {
+    result[byteCount - 1 - i] = number.remainder(b256).toInt();
     number = number >> 8;
   }
   return result;
@@ -60,16 +69,16 @@ extension ByteListToBigInt on List<int> {
   }
 }
 
-//TODO: Consider using package:collections instead.
-extension ListComparisons on List {
-  /// True if two lists contain the same elements in the same order.
-  bool equals(List list) {
-    if (length != list.length) return false;
-    for (var i = 0; i < list.length; i++) {
-      if (this[i] != list[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
+/// Generates a random BigInt in the range [min, max].
+BigInt generateRandomBigInt(BigInt min, BigInt max) {
+  final range = max - min + BigInt.one;
+  final bytesNeeded = (range.bitLength + 7) ~/ 8;
+
+  BigInt result;
+  do {
+    final bytes = generateRandomBytes(bytesNeeded);
+    result = bytes.toBigInt();
+  } while (result >= range);
+
+  return result + min;
 }
