@@ -1,6 +1,6 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart';
-import 'package:dsrp/defaults.dart' show defaultByteLengthForEphemeralKeys, defaultGenerator, defaultKdfAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey;
+import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
 import 'package:dsrp/hash.dart';
 import 'package:dsrp/kdf.dart';
@@ -140,7 +140,9 @@ class User {
   /// Generates ephemeral user public and private keys which are used only
   /// during SRP login and then discarded.
   _generateEphemeralUserAsymmetricKeys({List<int>? ephemeralUserPrivateKeyBytes}) {
-    ephemeralUserPrivateKeyBytes ??= generateRandomBytes(defaultByteLengthForEphemeralKeys);
+    ephemeralUserPrivateKeyBytes ??= generateRandomBytes(
+      deriveOptimalByteLengthForEphemeralKeys(safePrime.bitLength)
+    );
     _ephemeralUserPrivateKey = ephemeralUserPrivateKeyBytes.toBigInt();
     // A = g^a
     final publicKey = generator.modPow(_ephemeralUserPrivateKey!, safePrime);

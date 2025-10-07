@@ -34,8 +34,9 @@ final defaultSafePrime = BigInt.parse('ef0e3dc9ba1d254350c23c3d13dc91d6243d3701d
 /// improve security appreciably.
 final defaultSaltByteLengthForSaltedVerificationKey = 32;
 
-/// Balance of security and performance.
+/// Optimize for security with negligible performance impact.
 ///
-/// Should match the byte length of the safe prime.
-/// In this case 512 bytes = 4096 bit length prime.
-final defaultByteLengthForEphemeralKeys = 512;
+/// Matches the byte length of the safe prime.
+int deriveOptimalByteLengthForEphemeralKeys(int safePrimeBitLength) {
+  return safePrimeBitLength ~/ 8;
+}
