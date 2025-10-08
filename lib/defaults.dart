@@ -6,11 +6,11 @@ import 'package:dsrp/kdf.dart';
 /// No performance penalty on 32-bit systems, unlike SHA512. Avoids SHA1
 /// vulnerability to pre-image attacks that could eventually be exploited in a
 /// brute-force-on-the-verifier scenario.
-final defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
+const defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
 
 /// Intentionally slow and memory intensive to optimize for protection from
 /// brute-force attempts to derive the password from the verifier.
-final defaultKdfAlgorithmChoice = KdfAlgorithmChoice.argon2id;
+const defaultKdfAlgorithmChoice = KdfAlgorithmChoice.argon2id;
 
 /// 2 is the standard generator from RFC5054.
 ///
@@ -32,7 +32,7 @@ final defaultSafePrime = BigInt.parse('ef0e3dc9ba1d254350c23c3d13dc91d6243d3701d
 ///
 /// Going beyond this length is largely harmless, though probably does not
 /// improve security appreciably.
-final defaultSaltByteLengthForSaltedVerificationKey = 32;
+const defaultSaltByteLengthForSaltedVerificationKey = 32;
 
 /// Optimize for security with negligible performance impact.
 ///

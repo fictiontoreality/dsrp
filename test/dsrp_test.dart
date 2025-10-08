@@ -112,6 +112,87 @@ void main() {
           expect(user.sessionKey, server.sessionKey);
       });
 
+      test('full workflow works with useUserIdInPrivateKey = false', () async {
+          // Registration without userId in private key.
+          final saltedVerificationKey = await User.createSaltedVerificationKey(
+            password: password,
+            generator: generator,
+            safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
+          );
+
+          // Authentication without userId in private key.
+          final server = Server(
+            userId: username,
+            salt: saltedVerificationKey.salt,
+            verifierKey: saltedVerificationKey.key,
+            generator: BigInt.from(generator),
+            safePrime: safePrime,
+          );
+
+          final challenge = await server.createChallenge();
+
+          final user = await User.fromUserCredsAndChallenge(
+            userId: username,
+            password: password,
+            challenge: challenge,
+            kdfAlgorithm: kdfAlgorithmChoice,
+            useUserIdInPrivateKey: false,
+          );
+
+          final userSessionVerifiers = user.getUserSessionVerifiers();
+
+          final serverSessionKeyVerifier = await server.verifySession(
+            ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+            userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+          );
+
+          await user.verifySession(serverSessionKeyVerifier);
+
+          expect(user.sessionKey, server.sessionKey);
+      });
+
+      test('authentication fails when useUserIdInPrivateKey setting mismatches between registration and authentication', () async {
+          // Registration WITH userId in private key.
+          final saltedVerificationKey = await User.createSaltedVerificationKey(
+            userId: username,
+            password: password,
+            generator: generator,
+            safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
+          );
+
+          final server = Server(
+            userId: username,
+            salt: saltedVerificationKey.salt,
+            verifierKey: saltedVerificationKey.key,
+            generator: BigInt.from(generator),
+            safePrime: safePrime,
+          );
+
+          final challenge = await server.createChallenge();
+
+          // Authentication WITHOUT userId in private key (mismatch).
+          final user = await User.fromUserCredsAndChallenge(
+            userId: username,
+            password: password,
+            challenge: challenge,
+            kdfAlgorithm: kdfAlgorithmChoice,
+            useUserIdInPrivateKey: false,
+          );
+
+          final userSessionVerifiers = user.getUserSessionVerifiers();
+
+          // Server should reject because private key was derived differently.
+          expect(
+            server.verifySession(
+              ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+              userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+            ),
+            throwsA(isA<AuthenticationFailure>()),
+          );
+      });
+
       group('attack scenario tests', () {
           test('server rejects invalid user public key (A = 0 mod N)', () async {
               final saltedVerificationKey = await User.createSaltedVerificationKey(

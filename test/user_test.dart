@@ -21,6 +21,39 @@ void main() {
           expect(verifierKey.key, expectedVerifierKey);
       });
 
+      test('generates different verifier when userId is excluded', () async {
+          final verifierKeyWithUserId = await User.createSaltedVerificationKey(
+            userId: username, password: password,
+            generator: generator, safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
+            salt: salt);
+
+          final verifierKeyWithoutUserId = await User.createSaltedVerificationKey(
+            password: password,
+            generator: generator, safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
+            salt: salt);
+          
+          expect(verifierKeyWithoutUserId.key, isNot(equals(verifierKeyWithUserId.key)));
+      });
+
+      test('verifier without userId is deterministic for same password and salt', () async {
+          final verifierKey1 = await User.createSaltedVerificationKey(
+            password: password,
+            generator: generator, safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
+            salt: salt);
+
+          final verifierKey2 = await User.createSaltedVerificationKey(
+            password: password,
+            generator: generator, safePrime: safePrime,
+            kdfAlgorithm: kdfAlgorithmChoice,
+            salt: salt);
+
+          // Should generate same verifier when userId is not used.
+          expect(verifierKey1.key, equals(verifierKey2.key));
+      });
+
       test('generates random salt when not provided', () async {
           final verifierKey1 = await User.createSaltedVerificationKey(
             userId: username, password: password,
@@ -100,6 +133,23 @@ void main() {
               final verifiers2 = user2.getUserSessionVerifiers();
 
               expect(verifiers1.ephemeralUserPublicKey, isNot(equals(verifiers2.ephemeralUserPublicKey)));
+          });
+
+          test('session key and verifier changes when user id is not used to generate private key', () async {
+              final user2 = await User.fromUserCredsAndChallenge(
+                userId: username, password: password, challenge: challenge,
+                kdfAlgorithm: kdfAlgorithmChoice,
+                ephemeralUserPrivateKey: userPrivateKey,
+                useUserIdInPrivateKey: false,
+              );
+
+              final verifiers1 = user.getUserSessionVerifiers();
+              final verifiers2 = user2.getUserSessionVerifiers();
+
+              expect(user2.sessionKey, isNot(equals(user.sessionKey)));
+              // These should differ since the session key verifier is derived
+              // from the session key.
+              expect(verifiers2.sessionKeyVerifier, isNot(equals(verifiers1.sessionKeyVerifier)));
           });
       });
 

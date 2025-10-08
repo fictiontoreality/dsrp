@@ -14,6 +14,12 @@ final _log = Logger('dsrp.Server');
 ///
 /// This provides the user the minimum data needed from the server to generate
 /// the session key and its verifier.
+///
+/// WARNING: If the server provides the core SRP parameters (safe prime,
+/// generator, hash algorithm) it is highly recommended for the client to
+/// verify they are cryptographically secure. This could include checking the
+/// hash algorithm is one of those expected, and that the safe prime and
+/// generator and secure (see [verifySafePrime] and [verifyGenerator]).
 class Challenge {
   final int generator;
   final List<int> safePrime;
