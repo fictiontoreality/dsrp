@@ -1,4 +1,5 @@
 import 'dart:convert' show utf8;
+import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException;
@@ -62,28 +63,30 @@ class UserSessionVerifiers {
 /// Designed to mimic the API of Python's pysrp library.
 class User {
 
-  /// User identifier.
+  /// User identifier (UTF-8 encoded bytes).
   ///
   /// Used to derive the session key verifier, and optionally the user private
   /// key.
-  /// 
+  ///
   /// If the user ID is used to derive the private key, it is recommended to use
   /// a unique ID which does not change when the user-selected username changes.
   /// This avoids having to re-perform SRP user registration when the username
   /// changes.
-  String? _userId;
-  /// User password.
+  Uint8List? _userIdBytes;
+  /// User password (UTF-8 encoded bytes).
   ///
   /// Used to derive the user private key.
   ///
   /// To increase the difficulty of attacks on SRP, follow standard secure
   /// password requirements such as those suggested by NIST (e.g., long
   /// passwords that are difficult to guess).
-  String? _password;
+  ///
+  /// Stored as Uint8List to allow secure erasure from memory.
+  Uint8List? _passwordBytes;
   /// Hash algorithm used during SRP ephemeral key and verifier calculations (e.g., SHA256).
   final HashAlgorithm _hashAlgorithm;
-  /// KDF algorithm used to derive user private key.
-  final KdfAlgorithm _kdfAlgorithm;
+  /// Secure KDF algorithm used to derive user private key.
+  final Kdf _kdfAlgorithm;
   /// A generator modulo N (the safe prime).
   /// Typically denoted 'g'.
   final BigInt generator;
@@ -146,16 +149,62 @@ class User {
   /// registration.
   ///
   /// If a [ephemeralUserPrivateKey] is not provided, one is generated.
+  ///
+  /// For improved security, use [fromUserCredsBytesAndChallenge] to pass
+  /// credentials as Uint8List instead of String.
   static Future<User> fromUserCredsAndChallenge({
     required String userId,
     required String password,
     required Challenge challenge,
     final bool useUserIdInPrivateKey = true,
-    final KdfAlgorithmChoice kdfAlgorithm = defaultKdfAlgorithmChoice,
+    final KdfChoice kdfAlgorithm = defaultKdfAlgorithmChoice,
+    final List<int>? ephemeralUserPrivateKey,
+  }) async {
+    return fromUserCredsBytesAndChallenge(
+      userIdBytes: Uint8List.fromList(utf8.encode(userId)),
+      passwordBytes: Uint8List.fromList(utf8.encode(password)),
+      challenge: challenge,
+      useUserIdInPrivateKey: useUserIdInPrivateKey,
+      kdfAlgorithm: kdfAlgorithm,
+      ephemeralUserPrivateKey: ephemeralUserPrivateKey,
+    );
+  }
+
+  /// As part of initial user authentication handshake, create a [User] from a
+  /// [challenge] provided by the server.
+  ///
+  /// WARNING: If the server provides the core SRP parameters (safe prime,
+  /// generator, hash algorithm) it is highly recommended for the client to
+  /// verify they are cryptographically secure. This could include checking the
+  /// hash algorithm is one of those expected, and that the safe prime and
+  /// generator and secure (see [verifySafePrime] and [verifyGenerator]).
+  ///
+  /// Enable [useUserIdInPrivateKey] if the user ID was used for key generation
+  /// during user registration. See [createSaltedVerificationKey] for details.
+  /// If [useUserIdInPrivateKey] is false, the user ID is only used to generate
+  /// the user-side verifier.
+  ///
+  /// If [kdfAlgorithm] is not provided, Argon2id is used since it is slow and
+  /// hence relatively secure. Be sure this KDF matches the one used during
+  /// registration.
+  ///
+  /// If a [ephemeralUserPrivateKey] is not provided, one is generated.
+  ///
+  /// This method is preferred over [fromUserCredsAndChallenge] for security
+  /// reasons, as it avoids storing passwords as Strings in memory.
+  ///
+  /// [userIdBytes] and [passwordBytes] should be UTF-8 encoded credentials.
+  static Future<User> fromUserCredsBytesAndChallenge({
+    required Uint8List userIdBytes,
+    required Uint8List passwordBytes,
+    required Challenge challenge,
+    final bool useUserIdInPrivateKey = true,
+    final KdfChoice kdfAlgorithm = defaultKdfAlgorithmChoice,
     final List<int>? ephemeralUserPrivateKey,
   }) async {
     final user = User._(
-      userId: userId, password: password,
+      userIdBytes: userIdBytes,
+      passwordBytes: passwordBytes,
       generator: BigInt.from(challenge.generator),
       safePrime: challenge.safePrime.toBigInt(),
       verifierKeySalt: challenge.verifierKeySalt,
@@ -176,22 +225,22 @@ class User {
   }
 
   User._({
-    required String userId,
-    required String password,
+    required Uint8List userIdBytes,
+    required Uint8List passwordBytes,
     required this.generator,
     required this.safePrime,
     required List<int> verifierKeySalt,
     required this.useUserIdInPrivateKey,
     required HashAlgorithmChoice hashAlgorithm,
-    required KdfAlgorithmChoice kdfAlgorithm,
-  }): _password = password, _userId = userId, _verifierKeySalt = verifierKeySalt,
+    required KdfChoice kdfAlgorithm,
+  }): _passwordBytes = passwordBytes, _userIdBytes = userIdBytes, _verifierKeySalt = verifierKeySalt,
     _hashAlgorithm = getHashAlgorithm(hashAlgorithm),
-    _kdfAlgorithm = getKdfAlgorithm(kdfAlgorithm);
+    _kdfAlgorithm = getKdf(kdfAlgorithm);
 
   /// Creates a salted verification key.
   ///
   /// Pass this key to server as part of user registration request.
-  /// 
+  ///
   /// WARNING: If [safePrime] is not provided, the default safe prime provided
   /// by dsrp is used. This should NOT be done in production. You are encouraged
   /// to generate your own safe prime instead to reduce the chance of a
@@ -212,11 +261,64 @@ class User {
   /// database index, etc.) that is different from the user-chosen ID. That
   /// allows the user to change their login ID while their internal user ID
   /// remains constant.
+  ///
+  /// For improved security, use [createSaltedVerificationKeyFromBytes] to pass
+  /// credentials as Uint8List instead of String.
   static Future<SaltedVerificationKey> createSaltedVerificationKey({
       required String password,
       String? userId,
       int? generator, List<int>? safePrime,
-      KdfAlgorithmChoice? kdfAlgorithm,
+      KdfChoice? kdfAlgorithm,
+      List<int>? salt
+  }) async {
+    return createSaltedVerificationKeyFromBytes(
+      passwordBytes: Uint8List.fromList(utf8.encode(password)),
+      userIdBytes: userId != null ? Uint8List.fromList(utf8.encode(userId)) : null,
+      generator: generator,
+      safePrime: safePrime,
+      kdfAlgorithm: kdfAlgorithm,
+      salt: salt,
+    );
+  }
+
+  /// Creates a salted verification key from byte arrays.
+  ///
+  /// Pass this key to server as part of user registration request.
+  ///
+  /// WARNING: If [safePrime] is not provided, the default safe prime provided
+  /// by dsrp is used. This should NOT be done in production. You are encouraged
+  /// to generate your own safe prime instead to reduce the chance of a
+  /// pre-computed attack on common safe primes impacting your users.
+  ///
+  /// If [kdfAlgorithm] is not provided, Argon2id is used since it is slow and
+  /// hence relatively secure.
+  ///
+  /// If [salt] is not provided then a 32-byte random salt is generated.
+  ///
+  /// Only provide [userIdBytes] if you want derivation of the user private key
+  /// to include it, as is done in the RFC5054 standard. Not including the user
+  /// ID means if the ID changes, the user private key will need to be
+  /// regenerated and the user registration process repeated. When key
+  /// derivation excludes the user ID, re-registration is only needed if the
+  /// password changes.
+  ///
+  /// Another option is to provide a unique, fixed [userIdBytes] (e.g., a UUID,
+  /// user database index, etc.) that is different from the user-chosen ID. That
+  /// allows the user to change their login ID while their internal user ID
+  /// remains constant.
+  ///
+  /// For improved security, use [createSaltedVerificationKeyFromBytes] to pass
+  /// credentials as Uint8List instead of String.
+  ///
+  /// This method is preferred over [createSaltedVerificationKey] for security
+  /// reasons, as it avoids storing passwords as Strings in memory.
+  ///
+  /// [passwordBytes] and [userIdBytes] should be UTF-8 encoded credentials.
+  static Future<SaltedVerificationKey> createSaltedVerificationKeyFromBytes({
+      required Uint8List passwordBytes,
+      Uint8List? userIdBytes,
+      int? generator, List<int>? safePrime,
+      KdfChoice? kdfAlgorithm,
       List<int>? salt
   }) async {
     final generatorBigInt = generator != null ? BigInt.from(generator) : defaultGenerator;
@@ -224,10 +326,14 @@ class User {
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
-    final chosenKdfAlgorithm = getKdfAlgorithm(kdfAlgorithm ?? defaultKdfAlgorithmChoice);
+    final chosenKdfAlgorithm = getKdf(kdfAlgorithm ?? defaultKdfAlgorithmChoice);
     salt ??= generateRandomBytes(defaultSaltByteLengthForSaltedVerificationKey);
-    final privateKey = await _derivePrivateKey(userId: userId, password: password,
-      salt: salt, kdfAlgorithm: chosenKdfAlgorithm);
+    final privateKey = await _derivePrivateKey(
+      userIdBytes: userIdBytes,
+      passwordBytes: passwordBytes,
+      salt: Uint8List.fromList(salt),
+      secureKdfAlgorithm: chosenKdfAlgorithm
+    );
     final verifierKey = _deriveVerificationKey(privateKey: privateKey,
       generator: generatorBigInt, safePrime: safePrimeBigInt);
     final verifierKeyBytes = verifierKey.toByteList();
@@ -266,7 +372,7 @@ class User {
       await _hashRfc5054([generator.toByteList()])
     ).toBigInt();
     // H(I)
-    final hashedUserId = (await _hashAlgorithm.hash(utf8.encode(_userId!))).bytes;
+    final hashedUserId = (await _hashAlgorithm.hash(_userIdBytes!)).bytes;
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();
     // M1 = H(H(N) xor H(g), H(I), s, A, B, K)
@@ -283,11 +389,13 @@ class User {
   /// Retrieve user session verifiers to send to server.
   UserSessionVerifiers getUserSessionVerifiers() {
     final verifiers = UserSessionVerifiers(
-      userId: _userId!,
+      userId: utf8.decode(_userIdBytes!),
       ephemeralUserPublicKey: List.of(_ephemeralUserPublicKeyBytes!),
       sessionKeyVerifier: List.of(_userSessionKeyVerifier),
     );
-    _userId = null; // No longer needed, discard immediately.
+    // Securely erase userId bytes now that they're no longer needed.
+    _userIdBytes!.overwriteWithZeros();
+    _userIdBytes = null;
     return verifiers;
   }
 
@@ -312,28 +420,31 @@ class User {
   }
 
   /// Private key.
-  /// 
+  ///
   /// RFC 5054 defines an unusual hash-based KDF:
   ///
-  /// x = H(s, H( I | ‘:’ | p ))
+  /// x = H(s, H( I | ':' | p ))
   ///
   /// While fast, this KDF is not secure against brute-force extraction of the
   /// password from the verifier, and a stronger (i.e., slower) KDF is
   /// recommended.
   static Future<BigInt> _derivePrivateKey({
-      required String password,
-      required List<int> salt, required KdfAlgorithm kdfAlgorithm,
-      String? userId,
+      required Uint8List passwordBytes,
+      required Uint8List salt,
+      required Kdf secureKdfAlgorithm,
+      Uint8List? userIdBytes,
   }) async {
-    final privateKey = await kdfAlgorithm.deriveKeyFromPassword(
-      password: userId != null ? '$userId:$password' : password,
-      nonce: salt,
+    final privateKey = await secureKdfAlgorithm.deriveKeyFromPasswordBytes(
+      passwordBytes: passwordBytes,
+      salt: salt,
+      userIdBytes: userIdBytes,
     );
     final privateKeyBytes = await privateKey.extractBytes();
     return privateKeyBytes.toBigInt();
   }
 
   /// Password verifier, a.k.a. verification key.
+  /// 
   /// v = g^x
   static BigInt _deriveVerificationKey({
       required BigInt privateKey,
@@ -343,26 +454,24 @@ class User {
     return saltedVerificationKey;
   }
 
-  /// Calculates the session key which will later be used for encrypted communication with server.
+  /// Calculates the session key which will later be used for encrypted
+  /// communication with server.
   ///
   /// K = H( (B - kg^x) ^ (a + ux) ) = H( (B - kv) ^ (a + ux) )
   Future<List<int>> _deriveSessionKey(
       List<int> salt, List<int> serverPublicKeyBytes) async {
     // x
     final privateKey = await _derivePrivateKey(
-      userId: useUserIdInPrivateKey ? _userId : null,
-      password: _password!,
-      salt: _verifierKeySalt,
-      kdfAlgorithm: _kdfAlgorithm,
+      userIdBytes: useUserIdInPrivateKey ? _userIdBytes : null,
+      passwordBytes: _passwordBytes!,
+      salt: Uint8List.fromList(_verifierKeySalt),
+      secureKdfAlgorithm: _kdfAlgorithm,
     );
     //TODO: Erase no longer needed verifier key. After Uint8 switch.
     // _verifierKeySalt.overwriteWithZeros();
     // User credentials no longer needed, discard immediately.
-    // 
-    // FIXME: Store sensitive strings like password and user ID in a class that
-    // supports replacement and/or immediate deletion. Uint8List seems to be the
-    // suggested approach.
-    _password = null;
+    _passwordBytes!.overwriteWithZeros();
+    _passwordBytes = null;
     // v = g^x
     final verifierKey = _deriveVerificationKey(
       privateKey: privateKey,

@@ -10,7 +10,7 @@ const defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
 
 /// Intentionally slow and memory intensive to optimize for protection from
 /// brute-force attempts to derive the password from the verifier.
-const defaultKdfAlgorithmChoice = KdfAlgorithmChoice.argon2id;
+const defaultKdfAlgorithmChoice = KdfChoice.argon2id;
 
 /// 2 is the standard generator from RFC5054.
 ///

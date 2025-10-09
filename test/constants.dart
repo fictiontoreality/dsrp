@@ -9,4 +9,4 @@ final safePrime = BigInt.parse('EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B
 
 final hashAlgorithmChoice = HashAlgorithmChoice.sha256;
 
-final kdfAlgorithmChoice = KdfAlgorithmChoice.sha256;
+final kdfAlgorithmChoice = KdfChoice.sha256;
