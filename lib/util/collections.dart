@@ -20,3 +20,19 @@ extension ListComparisons on List {
     return true;
   }
 }
+
+extension ListDeletion on List {
+  /// Overwrite elements with zeros so that the data is destroyed.
+  ///
+  /// Usually followed by setting all references of the `List` to `null` so it
+  /// can later be deleted by the garbage collector. By overwriting the data
+  /// first, the data is destroyed immediately rather than waiting for the next
+  /// garbage collector cycle, and avoids the risk that a dangling reference
+  /// keeps the `List` alive longer than expected. Thus overwriting is an extra
+  /// security precaution.
+  void overwriteWithZeros() {
+    for (var i = 0; i < length; i++) {
+      this[i] = 0;
+    }
+  }
+}

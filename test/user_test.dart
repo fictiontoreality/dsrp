@@ -100,11 +100,8 @@ void main() {
 
       group('fromUserCredsAndChallenge factory tests', () {
           test('parameters are processed correctly', () {
-              expect(user.userId, username);
-              expect(user.password, password);
               expect(user.generator.toInt(), generator);
               expect(user.safePrime.toByteList(), safePrime);
-              expect(user.hashAlgorithm, hashAlgorithmChoice);
           });
 
           test('derived session key matches pysrp', () {

@@ -1,5 +1,7 @@
-import 'dart:convert';
+/// Key derivation function (KDF) algorithms.
+library;
 
+import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 
 //TODO: Allow custom hash and KDF algorithms - this would require creating a

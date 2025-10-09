@@ -35,22 +35,41 @@ class UserSessionVerifiers {
   });
 }
 
-/// Operations the user / client performs to authenticate with a server via SRP.
+/// Operations the user / client performs to register and authenticate with a
+/// server via SRP.
+///
+/// Once authentication is complete, store the session key somewhere, then
+/// ensure sensitive information in the [User] object is erased by allowing the
+/// garbage collector to delete the object (i.e., allow all references to the
+/// object to go out of scope and/or be set to null). The object internally
+/// attempts to delete data as soon as it is no longer needed.
 ///
 /// Designed to mimic the API of Python's pysrp library.
 class User {
 
   /// User identifier.
-  final String userId;
+  ///
+  /// Used to derive the session key verifier, and optionally the user private
+  /// key.
+  /// 
+  /// If the user ID is used to derive the private key, it is recommended to use
+  /// a unique ID which does not change when the user-selected username changes.
+  /// This avoids having to re-perform SRP user registration when the username
+  /// changes.
+  String? _userId;
   /// User password.
-  final String password;
-  final HashAlgorithmChoice hashAlgorithm;
-  /// Hash algorithm used during SRP key and verifier calculations (e.g., SHA256).
+  ///
+  /// Used to derive the user private key.
+  ///
+  /// To increase the difficulty of attacks on SRP, follow standard secure
+  /// password requirements such as those suggested by NIST (e.g., long
+  /// passwords that are difficult to guess).
+  String? _password;
+  /// Hash algorithm used during SRP ephemeral key and verifier calculations (e.g., SHA256).
   final HashAlgorithm _hashAlgorithm;
-  final KdfAlgorithmChoice kdfAlgorithm;
   /// KDF algorithm used to derive user private key.
   final KdfAlgorithm _kdfAlgorithm;
-  /// A generator modulo N.
+  /// A generator modulo N (the safe prime).
   /// Typically denoted 'g'.
   final BigInt generator;
   /// A large, safe prime.
@@ -59,13 +78,30 @@ class User {
   /// All arithmetic is performed in the field of integers modulo N.
   final BigInt safePrime;
 
+  /// If true, use user ID along with password in KDF to generate user private
+  /// key. Otherwise only the password is used.
+  ///
+  /// Only using the password avoids the need to regenerate the user private key
+  /// if the user ID changes. Alternatively, a unique user ID,
+  /// which does not change when the username changes, can be used.
   final bool useUserIdInPrivateKey;
 
+  /// Salt used to generate the user private key when deriving the session key
+  /// verifier.
   final List<int> _verifierKeySalt;
 
-  /// Shared symmetric key used for encrypting messages sent between user and server.
+  /// Shared symmetric key which can be used for encrypting messages sent
+  /// between user and server.
   ///
   /// Derived from the Diffie-Hellman shared secret.
+  ///
+  /// It is recommended not to directly use this key for encrypting messages,
+  /// but instead derive keys from it using, say HKDF, for authentication,
+  /// encryption, and integrity.
+  ///
+  /// Note that SRP can be used purely for authentication and generating a
+  /// session token / cookie, and need not be used to encrypt messages if an
+  /// already trusted encryption mechanism is being used (e.g., TLS).
   late final List<int> sessionKey;
   /// To be sent to the server so it can verify the user and the user's derived
   /// session key.
@@ -116,19 +152,24 @@ class User {
       ephemeralUserPrivateKeyBytes: ephemeralUserPrivateKey);
     // Derives session key and its user-side verifier M1.
     await user._processChallenge(challenge);
+
+    //TODO: Securely erase portions of challenge no longer needed. Seems to be
+    // immutable, so probably wait for universal switch to Uint8List.
+    // challenge.ephemeralServerPublicKey.overwriteWithZeros();
+
     return user;
   }
 
   User._({
-    required this.userId,
-    required this.password,
+    required String userId,
+    required String password,
     required this.generator,
     required this.safePrime,
     required List<int> verifierKeySalt,
     required this.useUserIdInPrivateKey,
-    required this.hashAlgorithm,
-    required this.kdfAlgorithm,
-  }): _verifierKeySalt = verifierKeySalt,
+    required HashAlgorithmChoice hashAlgorithm,
+    required KdfAlgorithmChoice kdfAlgorithm,
+  }): _password = password, _userId = userId, _verifierKeySalt = verifierKeySalt,
     _hashAlgorithm = getHashAlgorithm(hashAlgorithm),
     _kdfAlgorithm = getKdfAlgorithm(kdfAlgorithm);
 
@@ -197,7 +238,10 @@ class User {
   ///
   /// Session key verifier is often denoted 'M' or 'M1'.
   Future<void> _processChallenge(Challenge challenge) async {
-    sessionKey = await _deriveSessionKey(challenge.verifierKeySalt, challenge.ephemeralServerPublicKey);
+    sessionKey = await _deriveSessionKey(
+      challenge.verifierKeySalt,
+      challenge.ephemeralServerPublicKey
+    );
     // H(N)
     final hashedSafePrime = (
       await _hashAlgorithm.hash(safePrime.toByteList())
@@ -207,7 +251,7 @@ class User {
       await _hashRfc5054([generator.toByteList()])
     ).toBigInt();
     // H(I)
-    final hashedUserId = (await _hashAlgorithm.hash(utf8.encode(userId))).bytes;
+    final hashedUserId = (await _hashAlgorithm.hash(utf8.encode(_userId!))).bytes;
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();
     // M1 = H(H(N) xor H(g), H(I), s, A, B, K)
@@ -223,11 +267,13 @@ class User {
 
   /// Retrieve user session verifiers to send to server.
   UserSessionVerifiers getUserSessionVerifiers() {
-    return UserSessionVerifiers(
-      userId: userId,
+    final verifiers = UserSessionVerifiers(
+      userId: _userId!,
       ephemeralUserPublicKey: _ephemeralUserPublicKeyBytes!,
       sessionKeyVerifier: _userSessionKeyVerifier,
     );
+    _userId = null; // No longer needed, discard immediately.
+    return verifiers;
   }
 
   /// Verify server session key matches expected value, which verifies server is who is expected.
@@ -243,6 +289,11 @@ class User {
     if (!serverSessionKeyVerifier.shallowEquals(expectedServerSessionKeyVerifier)) {
       throw AuthenticationFailure('Server session key failed verification.');
     }
+    
+    // Securely delete items no longer needed.
+    _ephemeralUserPublicKeyBytes?.overwriteWithZeros();
+    _ephemeralUserPublicKeyBytes = null;
+    _userSessionKeyVerifier.overwriteWithZeros();
   }
 
   /// Private key.
@@ -284,11 +335,19 @@ class User {
       List<int> salt, List<int> serverPublicKeyBytes) async {
     // x
     final privateKey = await _derivePrivateKey(
-      userId: useUserIdInPrivateKey ? userId : null,
-      password: password,
+      userId: useUserIdInPrivateKey ? _userId : null,
+      password: _password!,
       salt: _verifierKeySalt,
       kdfAlgorithm: _kdfAlgorithm,
     );
+    //TODO: Erase no longer needed verifier key. After Uint8 switch.
+    // _verifierKeySalt.overwriteWithZeros();
+    // User credentials no longer needed, discard immediately.
+    // 
+    // FIXME: Store sensitive strings like password and user ID in a class that
+    // supports replacement and/or immediate deletion. Uint8List seems to be the
+    // suggested approach.
+    _password = null;
     // v = g^x
     final verifierKey = _deriveVerificationKey(
       privateKey: privateKey,
@@ -314,6 +373,8 @@ class User {
     final firstTerm = serverPublicKey - multiplierParameter * verifierKey;
     // a + ux
     final secondTerm = _ephemeralUserPrivateKey! + randomScramblingParameter * privateKey;
+    //TODO: Erase after Uint8List conversion.
+    _ephemeralUserPrivateKey = null;
     // S = (B - kv) ^ (a + ux)
     final secret = firstTerm.modPow(secondTerm, safePrime);
     // K = H( (B - kg^x) ^ (a + ux) ) = H( (B - kv) ^ (a + ux) ) = H(S)
@@ -321,6 +382,8 @@ class User {
     return sessionKey;
   }
 
+  /// Utility method to perform a RFC 5054 compliant hash with appropriate
+  /// padding and concatenation.
   Future<List<int>> _hashRfc5054(List<List<int>> byteLists) async {
     //OPTIMIZE: Make this a class field.
     final safePrimeBytes = safePrime.toByteList();

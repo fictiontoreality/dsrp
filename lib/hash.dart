@@ -1,3 +1,6 @@
+/// Hash algorithms.
+library;
+
 import 'package:cryptography/cryptography.dart';
 
 enum HashAlgorithmChoice {
