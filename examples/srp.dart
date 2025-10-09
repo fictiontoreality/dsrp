@@ -76,6 +76,8 @@ void main() async {
   // verifiers.
   final user = await User.fromUserCredsAndChallenge(
     userId: userId, password: password, challenge: challenge);
+  // Security best practice to zero-fill sensitive data when no longer needed.
+  challenge.erase();
   final userSessionVerifiers = user.getUserSessionVerifiers();
 
   // 3. The user-derived verifiers are sent to the server.
@@ -92,9 +94,11 @@ void main() async {
   final serverSessionKeyVerifier = await server.verifySession(
     ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
     userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier);
+  userSessionVerifiers.erase();
   log.info('Server verified session and generated a session verifier, sent it to the user.');
 
-  // 5. The user verifies the server session key. Throws an exception if verification fails.
+  // 5. The user verifies the server session key. Throws an exception if
+  // verification fails.
   await user.verifySession(serverSessionKeyVerifier);
 
   // 6. User and server are now mutually authenticated and can continue using

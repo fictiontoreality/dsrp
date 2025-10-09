@@ -20,6 +20,12 @@ class SaltedVerificationKey {
   final List<int> salt;
 
   SaltedVerificationKey({required this.key, required this.salt});
+
+  /// Overwrites sensitive data with zeros.
+  void erase() {
+    key.overwriteWithZeros();
+    salt.overwriteWithZeros();
+  }
 }
 
 /// Data to be sent to the server to verify the user session key.
@@ -33,6 +39,12 @@ class UserSessionVerifiers {
       required this.ephemeralUserPublicKey,
       required this.sessionKeyVerifier
   });
+
+  /// Overwrites sensitive data with zeros.
+  void erase() {
+    ephemeralUserPublicKey.overwriteWithZeros();
+    sessionKeyVerifier.overwriteWithZeros();
+  }
 }
 
 /// Operations the user / client performs to register and authenticate with a
@@ -269,8 +281,8 @@ class User {
   UserSessionVerifiers getUserSessionVerifiers() {
     final verifiers = UserSessionVerifiers(
       userId: _userId!,
-      ephemeralUserPublicKey: _ephemeralUserPublicKeyBytes!,
-      sessionKeyVerifier: _userSessionKeyVerifier,
+      ephemeralUserPublicKey: List.of(_ephemeralUserPublicKeyBytes!),
+      sessionKeyVerifier: List.of(_userSessionKeyVerifier),
     );
     _userId = null; // No longer needed, discard immediately.
     return verifiers;
