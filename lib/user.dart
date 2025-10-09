@@ -1,7 +1,7 @@
 import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
-import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
+import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException;
 import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/crypto/kdf.dart';
 import 'package:dsrp/rfc5054.dart';
@@ -370,7 +370,7 @@ class User {
         [_ephemeralUserPublicKeyBytes!, serverPublicKeyBytes]
     )).toBigInt();
     if (randomScramblingParameter == BigInt.zero) {
-      throw 'Abort authentication! Random scrambling parameter (u = H(A,B)) is zero.';
+      throw CryptographicException('Random scrambling parameter (u = H(A,B)) is zero.');
     }
     // k = H(N,g)
     final multiplierParameter = (await _hashRfc5054(
@@ -379,7 +379,7 @@ class User {
     // Notated 'B'.
     final serverPublicKey = serverPublicKeyBytes.toBigInt();
     if (serverPublicKey % safePrime == BigInt.zero) {
-      throw 'Abort authentication! Ephemeral public server key is invalid (B % N == 0).';
+      throw InvalidParameterException('Ephemeral public server key is invalid (B % N == 0).');
     }
     // B - k(g^x) = B - kv
     final firstTerm = serverPublicKey - multiplierParameter * verifierKey;

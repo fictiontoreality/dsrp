@@ -1,3 +1,4 @@
+import 'package:dsrp/exceptions.dart';
 import 'package:dsrp/verify.dart';
 import 'package:test/test.dart';
 
@@ -31,7 +32,7 @@ void main() {
       for (final n in composites) {
         expect(
           () => verifySafePrime(BigInt.from(n), 2),
-          throwsA(anything),
+          throwsA(isA<InvalidParameterException>()),
           reason: '$n should be rejected (not prime)'
         );
       }
@@ -51,7 +52,7 @@ void main() {
       for (final p in nonSafePrimes) {
         expect(
           () => verifySafePrime(BigInt.from(p), 2),
-          throwsA(anything),
+          throwsA(isA<InvalidParameterException>()),
           reason: '$p should be rejected (not a safe prime)'
         );
       }
@@ -78,12 +79,12 @@ void main() {
 
       expect(
         () => verifySafePrime(safePrime, 8),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifySafePrime(safePrime, 16),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -108,36 +109,36 @@ void main() {
     test('rejects even numbers', () {
       expect(
         () => verifySafePrime(BigInt.from(2), 2),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifySafePrime(BigInt.from(100), 7),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
     test('rejects zero and one', () {
       expect(
         () => verifySafePrime(BigInt.zero, 1),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifySafePrime(BigInt.one, 1),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
     test('rejects negative numbers', () {
       expect(
         () => verifySafePrime(BigInt.from(-7), 3),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifySafePrime(BigInt.from(-11), 4),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
   });
@@ -176,12 +177,12 @@ void main() {
 
       expect(
         () => verifyGenerator(BigInt.zero, safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifyGenerator(BigInt.one, safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -190,17 +191,17 @@ void main() {
 
       expect(
         () => verifyGenerator(BigInt.from(11), safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifyGenerator(BigInt.from(12), safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       expect(
         () => verifyGenerator(BigInt.from(100), safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -212,7 +213,7 @@ void main() {
 
       expect(
         () => verifyGenerator(generator, safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -225,7 +226,7 @@ void main() {
 
       expect(
         () => verifyGenerator(badGenerator, safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -236,7 +237,7 @@ void main() {
 
       expect(
         () => verifyGenerator(compositeGenerator, safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -245,7 +246,7 @@ void main() {
 
       expect(
         () => verifyGenerator(BigInt.from(-2), safePrime),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
     });
 
@@ -302,7 +303,7 @@ void main() {
       // Safe prime verification should fail.
       expect(
         () => verifySafePrime(notSafePrime, minimumBitLength),
-        throwsA(anything)
+        throwsA(isA<InvalidParameterException>())
       );
 
       // Even if we skip safe prime check, generator check should ideally fail

@@ -240,7 +240,7 @@ void main() {
                   challenge: challenge,
                   kdfAlgorithm: kdfAlgorithmChoice,
                 ),
-                throwsA(anything),
+                throwsA(isA<InvalidParameterException>()),
               );
           });
 

@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
+import 'package:dsrp/exceptions.dart';
 
 //TODO: Allow custom hash and KDF algorithms - this would require creating a
 // interface similar to that of cryptography lib (but not the exact interface so
@@ -37,7 +38,7 @@ final _kdfChoiceToAlgorithm = <KdfAlgorithmChoice, KdfAlgorithm>{
 KdfAlgorithm getKdfAlgorithm(final KdfAlgorithmChoice choice) {
   final kdfAlgorithm = _kdfChoiceToAlgorithm[choice];
   if (kdfAlgorithm == null) {
-    throw 'KDF choice not supported.';
+    throw UnsupportedAlgorithmException('KDF algorithm $choice is not supported.');
   }
   return kdfAlgorithm;
 }

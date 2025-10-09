@@ -8,6 +8,7 @@
 /// - generator
 library;
 
+import 'package:dsrp/exceptions.dart';
 import 'package:dsrp/util/prime.dart';
 
 /// Verifies that a number is a safe prime.
@@ -21,18 +22,18 @@ import 'package:dsrp/util/prime.dart';
 void verifySafePrime(BigInt safePrime, int minimumBitLength) {
   // Check if N is prime
   if (!isProbablyPrime(safePrime)) {
-    throw 'Provided "safe prime" is likely not prime.';
+    throw InvalidParameterException('Provided "safe prime" is likely not prime.');
   }
 
   // Check if q = (N - 1) / 2 is also prime
   final sophieGermainPrime = (safePrime - BigInt.one) ~/ BigInt.two;
   if (!isProbablyPrime(sophieGermainPrime)) {
-    throw 'The Sohpie Germain prime of the provided "safe prime" is not prime.';
+    throw InvalidParameterException('The Sophie Germain prime of the provided "safe prime" is not prime.');
   }
 
   // Verify the relationship N = 2q + 1
   if (safePrime != BigInt.two * sophieGermainPrime + BigInt.one) {
-    throw 'Provided "safe prime" does not have a Sophie Germain prime.';
+    throw InvalidParameterException('Provided "safe prime" does not have a Sophie Germain prime.');
   }
 
   // Verifies that a safe prime has the required bit length.
@@ -40,7 +41,7 @@ void verifySafePrime(BigInt safePrime, int minimumBitLength) {
   // A safe prime should use all bits of the specified length, with the highest
   // bit set to 1 to ensure it is sufficiently large.
   if (safePrime.bitLength < minimumBitLength) {
-    throw 'Safe prime has bit length ${safePrime.bitLength} which is less than the minimum bit length of $minimumBitLength.';
+    throw InvalidParameterException('Safe prime has bit length ${safePrime.bitLength} which is less than the minimum bit length of $minimumBitLength.');
   }
 }
 
@@ -57,11 +58,11 @@ void verifySafePrime(BigInt safePrime, int minimumBitLength) {
 /// For cryptographic applications, this is generally acceptable.
 void verifyGenerator(BigInt generator, BigInt safePrime) {
   if (generator < BigInt.two || generator >= safePrime) {
-    throw 'Generator $generator is out of range 2 <= generator <= safe prime.';
+    throw InvalidParameterException('Generator $generator is out of range 2 <= generator <= safe prime.');
   }
 
   if (!isProbablyPrime(generator)) {
-    throw 'Generator $generator is unlikely to be prime.';
+    throw InvalidParameterException('Generator $generator is unlikely to be prime.');
   }
 
   // q = (N - 1) / 2
@@ -69,10 +70,10 @@ void verifyGenerator(BigInt generator, BigInt safePrime) {
 
   // Check g^2 mod N ≠ 1
   if (generator.modPow(BigInt.from(2), safePrime) == BigInt.one) {
-    throw 'Generator $generator only generates the trivial subgroup of the safe prime.';
+    throw InvalidParameterException('Generator $generator only generates the trivial subgroup of the safe prime.');
   }
   // Check g^q mod N ≠ 1
   if (generator.modPow(q, safePrime) == BigInt.one) {
-    throw 'Generator $generator does not generate the full subgroup of the safe prime.';
+    throw InvalidParameterException('Generator $generator does not generate the full subgroup of the safe prime.');
   }
 }

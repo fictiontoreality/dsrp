@@ -2,6 +2,7 @@
 library;
 
 import 'package:cryptography/cryptography.dart';
+import 'package:dsrp/exceptions.dart';
 
 enum HashAlgorithmChoice {
   sha1,
@@ -18,7 +19,7 @@ final _hashChoiceToAlgorithm = <HashAlgorithmChoice, HashAlgorithm>{
 HashAlgorithm getHashAlgorithm(final HashAlgorithmChoice choice) {
   final hashAlgorithm = _hashChoiceToAlgorithm[choice];
   if (hashAlgorithm == null) {
-    throw 'Hash choice not supported.';
+    throw UnsupportedAlgorithmException('Hash algorithm $choice is not supported.');
   }
   return hashAlgorithm;
 }
