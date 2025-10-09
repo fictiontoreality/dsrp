@@ -6,6 +6,8 @@
 /// SRP primitives include:
 /// - safe prime
 /// - generator
+/// - salt
+/// - ephemeral keys
 library;
 
 import 'package:dsrp/exceptions.dart';
@@ -75,5 +77,44 @@ void verifyGenerator(BigInt generator, BigInt safePrime) {
   // Check g^q mod N ≠ 1
   if (generator.modPow(q, safePrime) == BigInt.one) {
     throw InvalidParameterException('Generator $generator does not generate the full subgroup of the safe prime.');
+  }
+}
+
+/// Minimum recommended byte length for salts to ensure sufficient entropy.
+///
+/// 16 bytes (128 bits) is the minimum recommended by NIST and other standards
+/// to prevent rainbow table and brute-force attacks.
+const int minimumRecommendedSaltByteLength = 16;
+
+/// Verifies that a salt meets security requirements.
+///
+/// A salt must meet the minimum recommended length (16 bytes / 128 bits by
+/// default).
+///
+/// The minimum length can be overridden with [minimumByteLength], but values
+/// below 16 bytes are not recommended for production use.
+void verifySalt(List<int> salt, {int minimumByteLength = minimumRecommendedSaltByteLength}) {
+  if (salt.length < minimumByteLength) {
+    throw InvalidParameterException(
+      'Salt length (${salt.length} bytes) is below the recommended minimum '
+      '($minimumByteLength bytes). This may be cryptographically insecure.'
+    );
+  }
+}
+
+/// Verifies that an ephemeral public key is valid.
+///
+/// An ephemeral public key (A for user, B for server) must not be zero
+/// modulo the safe prime (i.e., key % N ≠ 0). This prevents certain attacks
+/// where an attacker can force the session key to a known value.
+///
+/// [keyName] should be 'A' for user keys or 'B' for server keys for clear
+/// error messages.
+void verifyEphemeralKey(BigInt publicKey, BigInt safePrime, String keyName) {
+  if (publicKey % safePrime == BigInt.zero) {
+    throw InvalidParameterException(
+      'Ephemeral public key $keyName is invalid ($keyName % N == 0). '
+      'This may indicate an attack attempt.'
+    );
   }
 }

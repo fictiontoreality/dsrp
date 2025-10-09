@@ -50,7 +50,8 @@ void main() async {
   // 2. The salted verification key is sent to the server, along with user ID,
   // to register the user for later authentication.
   log.info('User began registration by creating a salted verification key and sending it to the server.');
-  log.info('Server stored salted verification key for future authentication.');
+  verifySalt(saltedVerificationKey.salt);
+  log.info('Server stored salted verification key and its salt for future authentication.');
   log.info('///// USER REGISTRATION COMPLETE /////');
 
 

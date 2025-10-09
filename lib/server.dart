@@ -6,6 +6,7 @@ import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/rfc5054.dart';
 import 'package:dsrp/util/bytes.dart';
 import 'package:dsrp/util/collections.dart';
+import 'package:dsrp/verify.dart' show verifyEphemeralKey;
 import 'package:logging/logging.dart';
 
 final _log = Logger('dsrp.Server');
@@ -16,10 +17,10 @@ final _log = Logger('dsrp.Server');
 /// the session key and its verifier.
 ///
 /// WARNING: If the server provides the core SRP parameters (safe prime,
-/// generator, hash algorithm) it is highly recommended for the client to
-/// verify they are cryptographically secure. This could include checking the
-/// hash algorithm is one of those expected, and that the safe prime and
-/// generator and secure (see [verifySafePrime] and [verifyGenerator]).
+/// generator, hash algorithm) it is highly recommended for the client to verify
+/// they are cryptographically secure. This could include checking the hash
+/// algorithm is one of those expected, and that the safe prime, generator and
+/// salt are secure (see [verifySafePrime], [verifyGenerator], [verifySalt]).
 class Challenge {
   final int generator;
   final List<int> safePrime;
@@ -116,9 +117,7 @@ class Server {
   /// user session key verifier using the session key. Regardless, you still
   /// need to verify the session key before considering the session verified.
   Future<List<int>> deriveSessionKey({required List<int> ephemeralUserPublicKey}) async {
-    if (ephemeralUserPublicKey.toBigInt() % safePrime == BigInt.zero) {
-      throw AuthenticationFailure('Invalid ephemeral user public key.');
-    }
+    verifyEphemeralKey(ephemeralUserPublicKey.toBigInt(), safePrime, 'A (user)');
     // u = H(A,B)
     final randomScramblingParameter = (await _hashRfc5054(
         [ephemeralUserPublicKey, _ephemeralServerPublicKey!]

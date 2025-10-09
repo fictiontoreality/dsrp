@@ -104,7 +104,7 @@ void main() {
 
         expect(
           server.deriveSessionKey(ephemeralUserPublicKey: invalidUserPublicKey),
-          throwsA(isA<AuthenticationFailure>()),
+          throwsA(isA<InvalidParameterException>()),
         );
       });
     });

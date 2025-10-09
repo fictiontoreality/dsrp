@@ -8,6 +8,7 @@ import 'package:dsrp/rfc5054.dart';
 import 'package:dsrp/server.dart' show Challenge;
 import 'package:dsrp/util/bytes.dart';
 import 'package:dsrp/util/collections.dart';
+import 'package:dsrp/verify.dart' show verifyEphemeralKey;
 import 'package:logging/logging.dart';
 
 final _log = Logger('dsrp.User');
@@ -16,7 +17,9 @@ final _log = Logger('dsrp.User');
 /// This data should be registered with the server for future authentication.
 class SaltedVerificationKey {
   //OPTIMIZE: Use Uint8List, since int defaults 64-bit rather than a byte?
+  /// Salted verification key.
   final List<int> key;
+  /// Salt used to generate verification key.
   final List<int> salt;
 
   SaltedVerificationKey({required this.key, required this.salt});
@@ -378,9 +381,7 @@ class User {
     )).toBigInt();
     // Notated 'B'.
     final serverPublicKey = serverPublicKeyBytes.toBigInt();
-    if (serverPublicKey % safePrime == BigInt.zero) {
-      throw InvalidParameterException('Ephemeral public server key is invalid (B % N == 0).');
-    }
+    verifyEphemeralKey(serverPublicKey, safePrime, 'B (server)');
     // B - k(g^x) = B - kv
     final firstTerm = serverPublicKey - multiplierParameter * verifierKey;
     // a + ux
