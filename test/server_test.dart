@@ -27,9 +27,6 @@ void main() {
 
     group('Server constructor tests', () {
       test('parameters are processed correctly', () {
-        expect(server.userId, username);
-        expect(server.salt, salt);
-        expect(server.verifierKey, verifierKey.toBigInt());
         expect(server.generator.toInt(), generator);
         expect(server.safePrime.toByteList(), safePrime);
         expect(server.hashAlgorithmChoice, hashAlgorithmChoice);
@@ -55,7 +52,6 @@ void main() {
         expect(challenge.safePrime, safePrime);
         expect(challenge.verifierKeySalt, salt);
         expect(challenge.hashAlgorithm, hashAlgorithmChoice);
-        expect(server.ephemeralServerPublicKey, isNotNull);
       });
 
       test('generated server public key matches pysrp', () async {

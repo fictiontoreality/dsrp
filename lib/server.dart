@@ -41,11 +41,11 @@ class Challenge {
 /// Designed to mimic the API of Python's pysrp library.
 class Server {
   /// User identifier.
-  final String userId;
+  String? _userId;
   /// Salt provided by user during registration.
-  final List<int> salt;
+  final List<int> _salt;
   /// Verifier key provided by user during registration.
-  final BigInt verifierKey;
+  BigInt _verifierKey;
   /// A generator modulo N.
   /// Typically denoted 'g'.
   final BigInt generator;
@@ -59,18 +59,19 @@ class Server {
   /// All arithmetic is performed in the field of integers modulo N.
   final BigInt safePrime;
 
-  BigInt? ephemeralServerPrivateKey;
-  List<int>? ephemeralServerPublicKey;
+  BigInt? _ephemeralServerPrivateKey;
+  List<int>? _ephemeralServerPublicKey;
   List<int>? sessionKey;
 
   Server({
-      required this.userId,
-      required this.salt,
+      required String userId,
+      required List<int> salt,
       required List<int> verifierKey,
       BigInt? generator,
       List<int>? safePrime,
       HashAlgorithmChoice? hashAlgorithm,
-  }) : verifierKey = verifierKey.toBigInt(),
+  }) : _salt = salt, _userId = userId,
+       _verifierKey = verifierKey.toBigInt(),
        generator = generator ?? defaultGenerator,
        safePrime = safePrime?.toBigInt() ?? defaultSafePrime,
        hashAlgorithmChoice = hashAlgorithm ?? defaultHashAlgorithmChoice,
@@ -85,19 +86,19 @@ class Server {
     ephemeralServerPrivateKeyBytes ??= generateRandomBytes(
       deriveOptimalByteLengthForEphemeralKeys(safePrime.bitLength)
     );
-    ephemeralServerPrivateKey = ephemeralServerPrivateKeyBytes.toBigInt();
+    _ephemeralServerPrivateKey = ephemeralServerPrivateKeyBytes.toBigInt();
     // k = H(N,g)
     final multiplierParameter = (await _hashRfc5054(
         [safePrime.toByteList(), generator.toByteList()]
     )).toBigInt();
     // B = kv + g^b
-    final ephemeralServerPublicKeyInt = (multiplierParameter * verifierKey + generator.modPow(ephemeralServerPrivateKey!, safePrime)) % safePrime;
-    ephemeralServerPublicKey = ephemeralServerPublicKeyInt.toByteList();
+    final ephemeralServerPublicKeyInt = (multiplierParameter * _verifierKey + generator.modPow(_ephemeralServerPrivateKey!, safePrime)) % safePrime;
+    _ephemeralServerPublicKey = ephemeralServerPublicKeyInt.toByteList();
     return Challenge(
       generator: generator.toInt(),
       safePrime: safePrime.toByteList(),
-      ephemeralServerPublicKey: ephemeralServerPublicKey!,
-      verifierKeySalt: salt,
+      ephemeralServerPublicKey: _ephemeralServerPublicKey!,
+      verifierKeySalt: _salt,
       hashAlgorithm: hashAlgorithmChoice
     );
   }
@@ -113,14 +114,17 @@ class Server {
     }
     // u = H(A,B)
     final randomScramblingParameter = (await _hashRfc5054(
-        [ephemeralUserPublicKey, ephemeralServerPublicKey!]
+        [ephemeralUserPublicKey, _ephemeralServerPublicKey!]
     )).toBigInt();
     // Av^u
-    final base = ephemeralUserPublicKey.toBigInt() * verifierKey.modPow(randomScramblingParameter, safePrime);
+    final base = ephemeralUserPublicKey.toBigInt() * _verifierKey.modPow(randomScramblingParameter, safePrime);
     // (Av^u) ^ b
-    final power = base.modPow(ephemeralServerPrivateKey!, safePrime).toByteList();
+    final power = base.modPow(_ephemeralServerPrivateKey!, safePrime).toByteList();
     // K = H((Av^u) ^ b)
     sessionKey = (await hashAlgorithm.hash(power)).bytes;
+    // Delete items that are no longer needed.
+    _verifierKey = BigInt.zero;
+    _ephemeralServerPrivateKey = BigInt.zero;
     return sessionKey!;
   }
 
@@ -145,6 +149,10 @@ class Server {
     final serverSessionKeyVerifier = (await hashAlgorithm.hash(
         ephemeralUserPublicKey + userSessionKeyVerifier + sessionKey!
     )).bytes;
+    //TODO: Delete items as soon as no longer needed.
+    // Needs to be copies of User values.
+    // ephemeralUserPublicKey.overwriteWithZeros();
+    // userSessionKeyVerifier.overwriteWithZeros();
     return serverSessionKeyVerifier;
   }
 
@@ -155,18 +163,23 @@ class Server {
     // H(g)
     final hashedGenerator = (await _hashRfc5054([generator.toByteList()])).toBigInt();
     // H(I)
-    final hashedUserId = (await hashAlgorithm.hash(utf8.encode(userId))).bytes;
+    final hashedUserId = (await hashAlgorithm.hash(utf8.encode(_userId!))).bytes;
+    _userId = null; // No longer needed, delete immediately.
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();
     // M1 = H(H(N) xor H(g), H(I), s, A, B, K)
     final sessionKeyVerifier = (await hashAlgorithm.hash(
         hashedSafePrimeAndGenerator +
         hashedUserId +
-        salt +
+        _salt +
         ephemeralUserPublicKey +
-        ephemeralServerPublicKey! +
+        _ephemeralServerPublicKey! +
         sessionKey!
     )).bytes;
+    //TODO: Delete items that are no longer needed. After Uint8List conversion.
+    // _salt.overwriteWithZeros();
+    _ephemeralServerPublicKey?.overwriteWithZeros();
+    _ephemeralServerPublicKey = null;
     return sessionKeyVerifier;
   }
 
