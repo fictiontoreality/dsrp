@@ -2,7 +2,7 @@ import 'dart:convert' show utf8;
 import 'package:cryptography/cryptography.dart' show HashAlgorithm;
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashAlgorithmChoice, defaultSafePrime, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
-import 'package:dsrp/hash.dart';
+import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/rfc5054.dart';
 import 'package:dsrp/util/bytes.dart';
 import 'package:dsrp/util/collections.dart';

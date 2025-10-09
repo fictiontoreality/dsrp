@@ -1,5 +1,5 @@
-import 'package:dsrp/hash.dart';
-import 'package:dsrp/kdf.dart';
+import 'package:dsrp/crypto/hash.dart';
+import 'package:dsrp/crypto/kdf.dart';
 
 /// Balance between compatibility, speed and security.
 ///
