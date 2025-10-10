@@ -1,10 +1,11 @@
+import 'dart:typed_data';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
 import 'constants.dart';
 
 void main() {
-  authenticate(List<int> verifierKey, List<int> salt, {List<int>? safePrime}) async {
+  authenticate(Uint8List verifierKey, Uint8List salt, {Uint8List? safePrime}) async {
     final server = Server(
       userId: username,
       salt: salt, verifierKey: verifierKey,
@@ -39,8 +40,8 @@ void main() {
 
       test('authenticate with stored verifier key and salt', () async {
           // Verifier key and salt stored on server from 'prior' registration.
-          const verifierKey = [38, 173, 182, 68, 210, 122, 188, 207, 48, 253, 137, 75, 207, 161, 251, 108, 245, 255, 167, 202, 206, 107, 158, 251, 195, 6, 65, 137, 17, 179, 102, 100, 132, 48, 113, 113, 254, 245, 45, 219, 237, 31, 6, 151, 191, 168, 83, 66, 207, 8, 199, 134, 190, 75, 220, 9, 64, 121, 240, 52, 222, 188, 154, 105, 197, 164, 250, 30, 23, 49, 82, 177, 226, 142, 206, 13, 62, 99, 124, 227, 216, 71, 207, 125, 238, 243, 140, 229, 240, 97, 59, 147, 196, 207, 25, 45, 131, 40, 142, 179, 207, 120, 248, 12, 44, 30, 132, 18, 146, 181, 40, 228, 93, 61, 150, 122, 135, 109, 223, 183, 117, 30, 161, 177, 76, 29, 39, 62];
-          const salt = [179, 213, 23, 45];
+          final verifierKey = Uint8List.fromList([38, 173, 182, 68, 210, 122, 188, 207, 48, 253, 137, 75, 207, 161, 251, 108, 245, 255, 167, 202, 206, 107, 158, 251, 195, 6, 65, 137, 17, 179, 102, 100, 132, 48, 113, 113, 254, 245, 45, 219, 237, 31, 6, 151, 191, 168, 83, 66, 207, 8, 199, 134, 190, 75, 220, 9, 64, 121, 240, 52, 222, 188, 154, 105, 197, 164, 250, 30, 23, 49, 82, 177, 226, 142, 206, 13, 62, 99, 124, 227, 216, 71, 207, 125, 238, 243, 140, 229, 240, 97, 59, 147, 196, 207, 25, 45, 131, 40, 142, 179, 207, 120, 248, 12, 44, 30, 132, 18, 146, 181, 40, 228, 93, 61, 150, 122, 135, 109, 223, 183, 117, 30, 161, 177, 76, 29, 39, 62]);
+          final salt = Uint8List.fromList([179, 213, 23, 45]);
           // Authentication.
           await authenticate(verifierKey, salt, safePrime: safePrime);
       });
@@ -51,13 +52,13 @@ void main() {
           const username = 'alice';
           const password = 'password123';
           // Salt from RFC5054 (hex: BEB25379 D1A8581E B5A72767 3A2441EE)
-          const salt = [190, 178, 83, 121, 209, 168, 88, 30, 181, 167, 39, 103, 58, 36, 65, 238];
+          final salt = Uint8List.fromList([190, 178, 83, 121, 209, 168, 88, 30, 181, 167, 39, 103, 58, 36, 65, 238]);
 
           // RFC5054 1024-bit group from Appendix A.
           const generator = 2;
 
           // Expected verifier from RFC5054.
-          const expectedVerifier = [
+          final expectedVerifier = Uint8List.fromList([
             0x7E, 0x27, 0x3D, 0xE8, 0x69, 0x6F, 0xFC, 0x4F, 0x4E, 0x33, 0x7D, 0x05, 0xB4, 0xB3, 0x75, 0xBE,
             0xB0, 0xDD, 0xE1, 0x56, 0x9E, 0x8F, 0xA0, 0x0A, 0x98, 0x86, 0xD8, 0x12, 0x9B, 0xAD, 0xA1, 0xF1,
             0x82, 0x22, 0x23, 0xCA, 0x1A, 0x60, 0x5B, 0x53, 0x0E, 0x37, 0x9B, 0xA4, 0x72, 0x9F, 0xDC, 0x59,
@@ -66,7 +67,7 @@ void main() {
             0x52, 0xE0, 0x8A, 0xB5, 0xEA, 0x53, 0xD1, 0x5C, 0x1A, 0xFF, 0x87, 0xB2, 0xB9, 0xDA, 0x6E, 0x04,
             0xE0, 0x58, 0xAD, 0x51, 0xCC, 0x72, 0xBF, 0xC9, 0x03, 0x3B, 0x56, 0x4E, 0x26, 0x48, 0x0D, 0x78,
             0xE9, 0x55, 0xA5, 0xE2, 0x9E, 0x7A, 0xB2, 0x45, 0xDB, 0x2B, 0xE3, 0x15, 0xE2, 0x09, 0x9A, 0xFB,
-          ];
+          ]);
 
           // Create verifier using SHA1 (as per RFC5054).
           final saltedVerificationKey = await User.createSaltedVerificationKey(
@@ -221,7 +222,7 @@ void main() {
           });
 
           test('user rejects invalid server public key (B = 0 mod N)', () async {
-              const salt = [1, 2, 3, 4];
+              final salt = Uint8List.fromList([1, 2, 3, 4]);
 
               // Create a challenge with invalid server public key.
               final challenge = Challenge(
@@ -313,7 +314,7 @@ void main() {
               );
 
               // Attack: Tamper with server's session key verifier
-              final tamperedVerifier = serverSessionKeyVerifier + [1, 2, 3];
+              final tamperedVerifier = Uint8List.fromList([...serverSessionKeyVerifier, 1, 2, 3]);
 
               expect(
                 user.verifySession(tamperedVerifier),
@@ -347,7 +348,7 @@ void main() {
               final userSessionVerifiers = user.getUserSessionVerifiers();
 
               // Attack: Tamper with user's session key verifier
-              final tamperedVerifier = userSessionVerifiers.sessionKeyVerifier + [9, 9, 9];
+              final tamperedVerifier = Uint8List.fromList([...userSessionVerifiers.sessionKeyVerifier, 9, 9, 9]);
 
               expect(
                 server.verifySession(

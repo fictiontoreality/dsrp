@@ -9,17 +9,23 @@ import 'package:dsrp/crypto/hash.dart';
 /// RFC5054 requires left-padding pre-concatenated bytes with zeros if bytes
 /// length less than that of the safe prime.
 Future<Uint8List> hashRfc5054({
-    required List<List<int>> byteLists,
-    required List<int> safePrime,
+    required List<Uint8List> byteLists,
+    required Uint8List safePrime,
     required HashFunction hashFunction
 }) async {
-  var bytes = <int>[];
+  // Build the padded byte array.
+  int totalSize =  byteLists.length * safePrime.length;
+  final bytes = Uint8List(totalSize);
+  int offset = 0;
   for (var byteList in byteLists) {
-    //OPTIMIZE: More efficient way to generate zeros?
-    bytes += List<int>.generate(safePrime.length - byteList.length, (index) => 0);
-    bytes += byteList;
+    // Left-pad with zeros.
+    final paddingLength = safePrime.length - byteList.length;
+    // Since Uint8List is zero-initialized, just copy the actual bytes.
+    bytes.setRange(offset + paddingLength, offset + safePrime.length, byteList);
+    offset += safePrime.length;
   }
-  final hash = await hashFunction.hash(Uint8List.fromList(bytes));
+
+  final hash = await hashFunction.hash(bytes);
   return hash;
 }
 

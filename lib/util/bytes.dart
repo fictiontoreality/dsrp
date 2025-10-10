@@ -11,9 +11,8 @@ int convertByteListToInt(List<int> bytes) {
 
 /// Convert 64-bit int to byte list.
 /// Source: https://stackoverflow.com/a/57536472/376497
-List<int> convertIntToByteList(int number) {
+Uint8List convertIntToByteList(int number) {
   final byteList = Uint8List(8);
-  // verifierKeyBytes.buffer.asInt64List()[0] = verifierKey;
   byteList.buffer.asByteData().setInt64(0, number, Endian.big);
   return byteList;
 }
@@ -24,7 +23,7 @@ BigInt convertByteListToBigInt(List<int> bytes) {
   BigInt result = BigInt.zero;
 
   for (final byte in bytes) {
-    // reading in big-endian, so we essentially concat the new byte to the end
+    // Reading in big-endian, so we essentially concat the new byte to the end.
     result = (result << 8) | BigInt.from(byte & 0xff);
   }
   return result;
@@ -32,13 +31,13 @@ BigInt convertByteListToBigInt(List<int> bytes) {
 
 /// Convert a BigInt to a byte list.
 /// Source: https://github.com/dart-lang/sdk/issues/32803#issuecomment-1228291047
-List<int> convertBigIntToByteList(BigInt number) {
+Uint8List convertBigIntToByteList(BigInt number) {
   // Not handling negative numbers. Decide how you want to do that.
   int byteCount = (number.bitLength + 7) >> 3;
 
   // Special case: zero should be represented as [0], not [].
   if (byteCount == 0) {
-    return [0];
+    return Uint8List.fromList([0]);
   }
 
   var b256 = BigInt.from(256);
@@ -52,13 +51,17 @@ List<int> convertBigIntToByteList(BigInt number) {
 
 /// Generate bytes with a cryptographically secure pseudorandom number
 /// generator (CSPRNG).
-List<int> generateRandomBytes(int bytesCount) {
+Uint8List generateRandomBytes(int bytesCount) {
   final random = Random.secure();
-  return List<int>.generate(bytesCount, (index) => random.nextInt(256));
+  final result = Uint8List(bytesCount);
+  for (int i = 0; i < bytesCount; i++) {
+    result[i] = random.nextInt(256);
+  }
+  return result;
 }
 
 extension BigIntToByteList on BigInt {
-  List<int> toByteList() {
+  Uint8List toByteList() {
     return convertBigIntToByteList(this);
   }
 }

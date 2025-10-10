@@ -10,6 +10,7 @@
 /// - ephemeral keys
 library;
 
+import 'dart:typed_data';
 import 'package:dsrp/exceptions.dart';
 import 'package:dsrp/util/prime.dart';
 
@@ -93,7 +94,7 @@ const int minimumRecommendedSaltByteLength = 16;
 ///
 /// The minimum length can be overridden with [minimumByteLength], but values
 /// below 16 bytes are not recommended for production use.
-void verifySalt(List<int> salt, {int minimumByteLength = minimumRecommendedSaltByteLength}) {
+void verifySalt(Uint8List salt, {int minimumByteLength = minimumRecommendedSaltByteLength}) {
   if (salt.length < minimumByteLength) {
     throw InvalidParameterException(
       'Salt length (${salt.length} bytes) is below the recommended minimum '
