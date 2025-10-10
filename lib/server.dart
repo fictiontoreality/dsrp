@@ -22,8 +22,8 @@ final _log = Logger('dsrp.Server');
 /// algorithm is one of those expected, and that the safe prime, generator and
 /// salt are secure (see [verifySafePrime], [verifyGenerator], [verifySalt]).
 class Challenge {
-  final int generator;
-  final Uint8List safePrime;
+  final BigInt generator;
+  final BigInt safePrime;
   final Uint8List ephemeralServerPublicKey;
   final Uint8List verifierKeySalt;
   final HashFunctionChoice hashFunction;
@@ -38,7 +38,6 @@ class Challenge {
 
   /// Overwrites sensitive data with zeros.
   void erase() {
-    safePrime.overwriteWithZeros();
     ephemeralServerPublicKey.overwriteWithZeros();
     verifierKeySalt.overwriteWithZeros();
   }
@@ -60,12 +59,14 @@ class Server {
   /// Hash algorithm used during SRP key and verifier calculations (e.g., SHA256).
   final HashFunctionChoice hashFunctionChoice;
   /// Hash algorithm used during SRP key and verifier calculations (e.g., SHA256).
-  final HashFunction hashFunction;
+  final HashFunction _hashFunction;
   /// A large, safe prime.
   /// Typically denoted 'N'.
   /// By definition a safe prime N = 2q + 1, where q is a Sophie Germain prime.
   /// All arithmetic is performed in the field of integers modulo N.
   final BigInt safePrime;
+  /// See [safePrime].
+  final Uint8List _safePrimeBytes;
 
   BigInt? _ephemeralServerPrivateKey;
   Uint8List? _ephemeralServerPublicKey;
@@ -76,14 +77,16 @@ class Server {
       required Uint8List salt,
       required Uint8List verifierKey,
       BigInt? generator,
-      Uint8List? safePrime,
+      BigInt? safePrime,
       HashFunctionChoice? hashFunction,
-  }) : _salt = salt, _userId = userId,
+  }) : _userId = userId,
+       _salt = Uint8List.fromList(salt),
        _verifierKey = verifierKey.toBigInt(),
        generator = generator ?? defaultGenerator,
-       safePrime = safePrime?.toBigInt() ?? defaultSafePrime,
+       safePrime = safePrime ?? defaultSafePrime,
+       _safePrimeBytes = safePrime?.toByteList() ?? defaultSafePrime.toByteList(),
        hashFunctionChoice = hashFunction ?? defaultHashFunctionChoice,
-       hashFunction = getHashFunction(hashFunction ?? defaultHashFunctionChoice) {
+       _hashFunction = getHashFunction(hashFunction ?? defaultHashFunctionChoice) {
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
@@ -103,8 +106,8 @@ class Server {
     final ephemeralServerPublicKeyInt = (multiplierParameter * _verifierKey + generator.modPow(_ephemeralServerPrivateKey!, safePrime)) % safePrime;
     _ephemeralServerPublicKey = ephemeralServerPublicKeyInt.toByteList();
     return Challenge(
-      generator: generator.toInt(),
-      safePrime: safePrime.toByteList(),
+      generator: generator,
+      safePrime: safePrime,
       ephemeralServerPublicKey: Uint8List.fromList(_ephemeralServerPublicKey!),
       verifierKeySalt: Uint8List.fromList(_salt),
       hashFunction: hashFunctionChoice
@@ -127,7 +130,7 @@ class Server {
     // (Av^u) ^ b
     final power = base.modPow(_ephemeralServerPrivateKey!, safePrime).toByteList();
     // K = H((Av^u) ^ b)
-    sessionKey = await hashFunction.hash(power);
+    sessionKey = await _hashFunction.hash(power);
     // Delete items that are no longer needed.
     _verifierKey = BigInt.zero;
     _ephemeralServerPrivateKey = BigInt.zero;
@@ -155,18 +158,18 @@ class Server {
     final combined = Uint8List.fromList(
         ephemeralUserPublicKey + userSessionKeyVerifier + sessionKey!
     );
-    final serverSessionKeyVerifier = await hashFunction.hash(combined);
+    final serverSessionKeyVerifier = await _hashFunction.hash(combined);
     return serverSessionKeyVerifier;
   }
 
   /// M1 = H(H(N) xor H(g), H(I), s, A, B, K)
   Future<Uint8List> _deriveUserSessionKeyVerifier(Uint8List ephemeralUserPublicKey) async {
     // H(N)
-    final hashedSafePrime = (await hashFunction.hash(safePrime.toByteList())).toBigInt();
+    final hashedSafePrime = (await _hashFunction.hash(safePrime.toByteList())).toBigInt();
     // H(g)
     final hashedGenerator = (await _hashRfc5054([generator.toByteList()])).toBigInt();
     // H(I)
-    final hashedUserId = await hashFunction.hash(Uint8List.fromList(utf8.encode(_userId!)));
+    final hashedUserId = await _hashFunction.hash(Uint8List.fromList(utf8.encode(_userId!)));
     _userId = null; // No longer needed, delete immediately.
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();
@@ -179,21 +182,20 @@ class Server {
         _ephemeralServerPublicKey! +
         sessionKey!
     );
-    final sessionKeyVerifier = await hashFunction.hash(combined);
-    //TODO: Delete items that are no longer needed. After Uint8List conversion.
-    // _salt.overwriteWithZeros();
+    final sessionKeyVerifier = await _hashFunction.hash(combined);
+    // Delete items that are no longer needed.
     _ephemeralServerPublicKey?.overwriteWithZeros();
     _ephemeralServerPublicKey = null;
+    _safePrimeBytes.overwriteWithZeros();
+    _salt.overwriteWithZeros();
     return sessionKeyVerifier;
   }
 
   Future<Uint8List> _hashRfc5054(List<Uint8List> byteLists) async {
-    //OPTIMIZE: Make this a class field.
-    final safePrimeBytes = safePrime.toByteList();
     return hashRfc5054(
       byteLists: byteLists,
-      safePrime: safePrimeBytes,
-      hashFunction: hashFunction
+      safePrime: _safePrimeBytes,
+      hashFunction: _hashFunction
     );
   }
 }

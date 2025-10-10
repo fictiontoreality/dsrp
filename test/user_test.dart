@@ -101,8 +101,8 @@ void main() {
 
       group('fromUserCredsAndChallenge factory tests', () {
           test('parameters are processed correctly', () {
-              expect(user.generator.toInt(), generator);
-              expect(user.safePrime.toByteList(), safePrime);
+              expect(user.generator, generator);
+              expect(user.safePrime, safePrime);
           });
 
           test('derived session key matches pysrp', () {

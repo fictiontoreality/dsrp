@@ -1,6 +1,5 @@
 import 'dart:convert' show utf8;
 import 'dart:typed_data';
-import 'package:cryptography/cryptography.dart';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException;
 import 'package:dsrp/crypto/hash.dart';
@@ -94,6 +93,8 @@ class User {
   /// By definition a safe prime N = 2q + 1, where q is a Sophie Germain prime.
   /// All arithmetic is performed in the field of integers modulo N.
   final BigInt safePrime;
+  /// See [safePrime].
+  final Uint8List _safePrimeBytes;
 
   /// If true, use user ID along with password in KDF to generate user private
   /// key. Otherwise only the password is used.
@@ -204,8 +205,8 @@ class User {
     final user = User._(
       userIdBytes: userIdBytes,
       passwordBytes: passwordBytes,
-      generator: BigInt.from(challenge.generator),
-      safePrime: challenge.safePrime.toBigInt(),
+      generator: challenge.generator,
+      safePrime: challenge.safePrime,
       verifierKeySalt: challenge.verifierKeySalt,
       useUserIdInPrivateKey: useUserIdInPrivateKey,
       hashFunction: challenge.hashFunction,
@@ -215,11 +216,6 @@ class User {
       ephemeralUserPrivateKeyBytes: ephemeralUserPrivateKey);
     // Derives session key and its user-side verifier M1.
     await user._processChallenge(challenge);
-
-    //TODO: Securely erase portions of challenge no longer needed. Seems to be
-    // immutable, so probably wait for universal switch to Uint8List.
-    // challenge.ephemeralServerPublicKey.overwriteWithZeros();
-
     return user;
   }
 
@@ -232,9 +228,12 @@ class User {
     required this.useUserIdInPrivateKey,
     required HashFunctionChoice hashFunction,
     required KdfChoice kdf,
-  }): _passwordBytes = passwordBytes, _userIdBytes = userIdBytes, _verifierKeySalt = verifierKeySalt,
-    _hashFunction = getHashFunction(hashFunction),
-    _kdf = getKdf(kdf);
+  }): _userIdBytes = Uint8List.fromList(userIdBytes),
+      _passwordBytes = Uint8List.fromList(passwordBytes),
+      _safePrimeBytes = safePrime.toByteList(),
+      _verifierKeySalt = Uint8List.fromList(verifierKeySalt),
+      _hashFunction = getHashFunction(hashFunction),
+      _kdf = getKdf(kdf);
 
   /// Creates a salted verification key.
   ///
@@ -266,7 +265,7 @@ class User {
   static Future<SaltedVerificationKey> createSaltedVerificationKey({
       required String password,
       String? userId,
-      int? generator, Uint8List? safePrime,
+      BigInt? generator, BigInt? safePrime,
       KdfChoice? kdf,
       Uint8List? salt
   }) async {
@@ -316,15 +315,16 @@ class User {
   static Future<SaltedVerificationKey> createSaltedVerificationKeyFromBytes({
       required Uint8List passwordBytes,
       Uint8List? userIdBytes,
-      int? generator, Uint8List? safePrime,
+      BigInt? generator, BigInt? safePrime,
       KdfChoice? kdf,
       Uint8List? salt
   }) async {
-    final generatorBigInt = generator != null ? BigInt.from(generator) : defaultGenerator;
-    final safePrimeBigInt = safePrime?.toBigInt() ?? defaultSafePrime;
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
+    final generatorBigInt = generator ?? defaultGenerator;
+    final safePrimeBigInt = safePrime ?? defaultSafePrime;
+
     final chosenKdf = getKdf(kdf ?? defaultKdfChoice);
     salt ??= generateRandomBytes(defaultSaltByteLengthForSaltedVerificationKey);
     final privateKey = await _derivePrivateKey(
@@ -468,9 +468,10 @@ class User {
       salt: _verifierKeySalt,
       kdf: _kdf,
     );
-    //TODO: Erase no longer needed verifier key. After Uint8 switch.
+    // Erase no longer needed verifier key and user credentials.
     // _verifierKeySalt.overwriteWithZeros();
-    // User credentials no longer needed, discard immediately.
+    // _userIdBytes!.overwriteWithZeros();
+    // _userIdBytes = null;
     _passwordBytes!.overwriteWithZeros();
     _passwordBytes = null;
     // v = g^x
@@ -496,7 +497,10 @@ class User {
     final firstTerm = serverPublicKey - multiplierParameter * verifierKey;
     // a + ux
     final secondTerm = _ephemeralUserPrivateKey! + randomScramblingParameter * privateKey;
-    //TODO: Erase after Uint8List conversion.
+    // No longer needed, let GC clean up.
+    //
+    // TODO: Switch to BigInt alternative that allows bypassing GC to zero out
+    // value.
     _ephemeralUserPrivateKey = null;
     // S = (B - kv) ^ (a + ux)
     final secret = firstTerm.modPow(secondTerm, safePrime);
@@ -508,11 +512,9 @@ class User {
   /// Utility method to perform a RFC 5054 compliant hash with appropriate
   /// padding and concatenation.
   Future<Uint8List> _hashRfc5054(List<Uint8List> byteLists) async {
-    //OPTIMIZE: Make this a class field.
-    final safePrimeBytes = safePrime.toByteList();
     return hashRfc5054(
       byteLists: byteLists,
-      safePrime: safePrimeBytes,
+      safePrime: _safePrimeBytes,
       hashFunction: _hashFunction
     );
   }

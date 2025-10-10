@@ -43,8 +43,8 @@ void main() async {
   final password = "fakepassword";
   final saltedVerificationKey = await User.createSaltedVerificationKey(
     userId: userId, password: password,
-    generator: generator.toInt(),
-    safePrime: safePrime.toByteList(),
+    generator: generator,
+    safePrime: safePrime,
   );
 
   // 2. The salted verification key is sent to the server, along with user ID,
@@ -68,7 +68,7 @@ void main() async {
     salt: saltedVerificationKey.salt,
     verifierKey: saltedVerificationKey.key,
     generator: generator,
-    safePrime: safePrime.toByteList()
+    safePrime: safePrime
   );
   final challenge = await server.createChallenge();
   log.info('Server created a challenge and sent it to the user.');

@@ -20,7 +20,7 @@ void main() {
         userId: username,
         salt: salt,
         verifierKey: verifierKey,
-        generator: BigInt.from(generator),
+        generator: generator,
         safePrime: safePrime,
         hashFunction: hashFunctionChoice,
       );
@@ -28,8 +28,8 @@ void main() {
 
     group('Server constructor tests', () {
       test('parameters are processed correctly', () {
-        expect(server.generator.toInt(), generator);
-        expect(server.safePrime.toByteList(), safePrime);
+        expect(server.generator, generator);
+        expect(server.safePrime, safePrime);
         expect(server.hashFunctionChoice, hashFunctionChoice);
       });
 
@@ -72,7 +72,7 @@ void main() {
           userId: username,
           salt: salt,
           verifierKey: verifierKey,
-          generator: BigInt.from(generator),
+          generator: generator,
           safePrime: safePrime,
         );
         final challenge2 = await server2.createChallenge();

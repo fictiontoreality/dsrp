@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 import 'constants.dart';
 
 void main() {
-  authenticate(Uint8List verifierKey, Uint8List salt, {Uint8List? safePrime}) async {
+  authenticate(Uint8List verifierKey, Uint8List salt, {BigInt? safePrime}) async {
     final server = Server(
       userId: username,
       salt: salt, verifierKey: verifierKey,
@@ -55,7 +55,7 @@ void main() {
           final salt = Uint8List.fromList([190, 178, 83, 121, 209, 168, 88, 30, 181, 167, 39, 103, 58, 36, 65, 238]);
 
           // RFC5054 1024-bit group from Appendix A.
-          const generator = 2;
+          final generator = BigInt.from(2);
 
           // Expected verifier from RFC5054.
           final expectedVerifier = Uint8List.fromList([
@@ -87,7 +87,7 @@ void main() {
             userId: username,
             salt: saltedVerificationKey.salt,
             verifierKey: saltedVerificationKey.key,
-            generator: BigInt.from(generator),
+            generator: generator,
             safePrime: safePrime,
             hashFunction: HashFunctionChoice.sha1,
           );
@@ -127,7 +127,7 @@ void main() {
             userId: username,
             salt: saltedVerificationKey.salt,
             verifierKey: saltedVerificationKey.key,
-            generator: BigInt.from(generator),
+            generator: generator,
             safePrime: safePrime,
           );
 
@@ -167,7 +167,7 @@ void main() {
             userId: username,
             salt: saltedVerificationKey.salt,
             verifierKey: saltedVerificationKey.key,
-            generator: BigInt.from(generator),
+            generator: generator,
             safePrime: safePrime,
           );
 
@@ -206,14 +206,14 @@ void main() {
                 userId: username,
                 salt: saltedVerificationKey.salt,
                 verifierKey: saltedVerificationKey.key,
-                generator: BigInt.from(generator),
+                generator: generator,
                 safePrime: safePrime,
               );
 
               await server.createChallenge();
 
               // Attack: Send A = N (which is 0 mod N).
-              final invalidUserPublicKey = safePrime;
+              final invalidUserPublicKey = safePrime.toByteList();
 
               expect(
                 server.deriveSessionKey(ephemeralUserPublicKey: invalidUserPublicKey),
@@ -228,7 +228,7 @@ void main() {
               final challenge = Challenge(
                 generator: generator,
                 safePrime: safePrime,
-                ephemeralServerPublicKey: safePrime, // B = N (0 mod N)
+                ephemeralServerPublicKey: safePrime.toByteList(), // B = N (0 mod N)
                 verifierKeySalt: salt,
                 hashFunction: hashFunctionChoice,
               );
@@ -256,7 +256,7 @@ void main() {
                 userId: username,
                 salt: saltedVerificationKey.salt,
                 verifierKey: saltedVerificationKey.key,
-                generator: BigInt.from(generator),
+                generator: generator,
                 safePrime: safePrime,
               );
 
@@ -293,7 +293,7 @@ void main() {
                 userId: username,
                 salt: saltedVerificationKey.salt,
                 verifierKey: saltedVerificationKey.key,
-                generator: BigInt.from(generator),
+                generator: generator,
                 safePrime: safePrime,
               );
 
@@ -333,7 +333,7 @@ void main() {
                 userId: username,
                 salt: saltedVerificationKey.salt,
                 verifierKey: saltedVerificationKey.key,
-                generator: BigInt.from(generator),
+                generator: generator,
                 safePrime: safePrime,
               );
 
@@ -370,7 +370,7 @@ void main() {
                 userId: username,
                 salt: saltedVerificationKey.salt,
                 verifierKey: saltedVerificationKey.key,
-                generator: BigInt.from(generator),
+                generator: generator,
                 safePrime: safePrime,
               );
 
