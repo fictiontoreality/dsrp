@@ -1,6 +1,7 @@
 /// Bytes utilities: conversion, generation, etc.
 library;
 
+import 'dart:convert' show utf8;
 import 'dart:math' show Random;
 import 'dart:typed_data' show Endian, Uint8List;
 
@@ -84,4 +85,57 @@ BigInt generateRandomBigInt(BigInt min, BigInt max) {
   } while (result >= range);
 
   return result + min;
+}
+
+/// Extension for converting strings to bytes for secure handling.
+extension StringToBytes on String {
+  /// This extension provides a convenient way to convert strings (such as
+  /// passwords, user IDs, or other sensitive data) to [Uint8List] for use in
+  /// cryptographic operations.
+  ///
+  /// The returned [Uint8List] can be zeroed out after use by calling
+  /// [overwriteWithZeros()] to prevent sensitive data from lingering in memory.
+  ///
+  /// **Important**: The original string will remain in memory until garbage
+  /// collected. For maximum security, obtain sensitive data directly as bytes
+  /// when possible rather than as strings.
+  /// 
+  /// **Security Best Practices:**
+  ///
+  /// 1. **Use [Uint8List] for sensitive data**: Unlike [String], [Uint8List] can
+  ///    be zeroed out after use to prevent sensitive data from lingering in
+  ///    memory. Always call [overwriteWithZeros()] on the resulting bytes when
+  ///    done.
+  ///
+  /// 2. **Minimize string lifetime**: Convert strings to bytes as early as
+  ///    possible and zero them out as soon as they're no longer needed.
+  ///
+  /// 3. **Avoid string copies**: Strings are immutable in Dart and cannot be
+  ///    securely erased from memory. The original string may persist in memory
+  ///    until garbage collected.
+  ///
+  /// **Example usage:**
+  /// ```dart
+  /// // Convert password to bytes
+  /// final passwordBytes = password.utf8Bytes;
+  ///
+  /// // Use the bytes for cryptographic operations
+  /// final saltedKey = await User.createSaltedVerificationKey(
+  ///   userId: 'alice',
+  ///   password: passwordBytes,
+  /// );
+  ///
+  /// // Zero out sensitive data when done
+  /// passwordBytes.overwriteWithZeros();
+  /// ```
+  ///
+  /// **When to use this:**
+  /// - Passwords
+  /// - Passphrases
+  /// - Secret keys
+  /// - User identifiers (if privacy-sensitive)
+  /// - Any sensitive string data used in cryptographic operations
+  Uint8List get utf8Bytes {
+    return Uint8List.fromList(utf8.encode(this));
+  }
 }

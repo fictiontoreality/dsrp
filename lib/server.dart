@@ -169,7 +169,7 @@ class Server {
     // H(g)
     final hashedGenerator = (await _hashRfc5054([generator.toByteList()])).toBigInt();
     // H(I)
-    final hashedUserId = await _hashFunction.hash(Uint8List.fromList(utf8.encode(_userId!)));
+    final hashedUserId = await _hashFunction.hash(_userId!.utf8Bytes);
     _userId = null; // No longer needed, delete immediately.
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();

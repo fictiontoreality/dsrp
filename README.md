@@ -70,7 +70,9 @@ await user.verifySession(serverSessionKeyVerifier);
 ```
 This and other usage examples are in the `/examples` folder.
 
-### Generate safe primes
+## Security Best Practices
+
+### Generate Safe Primes
 
 Pre-published safe primes such as those published in RFC5054 have
 likely been incorporated into pre-computed attacks, which may
@@ -81,7 +83,48 @@ Thus it is recommended to generate and use your own safe primes.
 
 A Python 3 script is included for generating safe primes. See the [README in `scripts/generate_safe_primes`](scripts/generate_safe_primes/README.md) for details.
 
-## Additional information
+### Erase Sensitive Data
+
+1. **Use [Uint8List] for sensitive data**: Unlike [String], [Uint8List] can
+   be zeroed out after use to prevent sensitive data from lingering in
+   memory. Always call [overwriteWithZeros()] on the resulting bytes when
+   done.
+
+2. **Minimize string lifetime**: Convert strings to bytes as early as
+   possible and zero them out as soon as they're no longer needed.
+
+3. **Avoid string copies**: Strings are immutable in Dart and cannot be
+   securely erased from memory. The original string may persist in memory
+   until garbage collected.
+
+**Example:**
+```dart
+// Convert `password` string obtained from form to bytes, 
+// or more ideally use a secure form that directly stores 
+// the password as bytes to avoid relying no the garbage 
+// collector to delete the string.
+final passwordBytes = password.utf8Bytes;
+// Remove the password String reference so it can be gargbage collected.
+password = "";
+
+// Use the bytes for cryptographic operations.
+final saltedKey = await User.createSaltedVerificationKey(
+  userId: 'alice',
+  password: passwordBytes,
+);
+
+// Zero out sensitive data when done.
+passwordBytes.overwriteWithZeros();
+```
+
+**Sensitive data examples:**
+- Passwords
+- Passphrases
+- Secret keys
+- User identifiers (if privacy-sensitive)
+- Any sensitive string data used in cryptographic operations
+
+## Additional Information
 
 TODO: Tell users more about the package: where to find more information, how to
 contribute to the package, how to file issues, what response they can expect

@@ -1,7 +1,9 @@
 /// Utilities for collection data structures.
 library;
 
-//TODO: Consider using package:collections instead.
+//TODO: Consider using package:collections instead if more methods from the
+// package become useful. For now probably not worth the expanded attack
+// surface and an extra dependency.
 extension ListComparisons on List {
   /// True if two lists contain the same elements in the same order.
   ///

@@ -161,8 +161,8 @@ class User {
     final Uint8List? ephemeralUserPrivateKey,
   }) async {
     return fromUserCredsBytesAndChallenge(
-      userIdBytes: Uint8List.fromList(utf8.encode(userId)),
-      passwordBytes: Uint8List.fromList(utf8.encode(password)),
+      userIdBytes: userId.utf8Bytes,
+      passwordBytes: password.utf8Bytes,
       challenge: challenge,
       useUserIdInPrivateKey: useUserIdInPrivateKey,
       kdf: kdf,
@@ -270,8 +270,8 @@ class User {
       Uint8List? salt
   }) async {
     return createSaltedVerificationKeyFromBytes(
-      passwordBytes: Uint8List.fromList(utf8.encode(password)),
-      userIdBytes: userId != null ? Uint8List.fromList(utf8.encode(userId)) : null,
+      passwordBytes: password.utf8Bytes,
+      userIdBytes: userId?.utf8Bytes,
       generator: generator,
       safePrime: safePrime,
       kdf: kdf,
@@ -499,8 +499,8 @@ class User {
     final secondTerm = _ephemeralUserPrivateKey! + randomScramblingParameter * privateKey;
     // No longer needed, let GC clean up.
     //
-    // TODO: Switch to BigInt alternative that allows bypassing GC to zero out
-    // value.
+    // TODO: Consider finding a BigInt alternative that allows bypassing GC to
+    // zero out value, while still being cross-platform performant.
     _ephemeralUserPrivateKey = null;
     // S = (B - kv) ^ (a + ux)
     final secret = firstTerm.modPow(secondTerm, safePrime);
