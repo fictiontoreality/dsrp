@@ -1,6 +1,6 @@
 library dsrp;
 
-export 'package:dsrp/crypto/hash.dart' show HashAlgorithmChoice;
+export 'package:dsrp/crypto/hash.dart' show HashFunctionChoice;
 export 'package:dsrp/crypto/kdf.dart' show KdfChoice, Kdf;
 export 'package:dsrp/exceptions.dart' show
     AuthenticationFailure,

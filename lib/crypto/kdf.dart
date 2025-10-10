@@ -3,6 +3,7 @@ library;
 
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
+import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/exceptions.dart';
 import 'package:dsrp/rfc5054.dart';
 
@@ -27,17 +28,17 @@ final _kdfChoiceToAlgorithm = <KdfChoice, Kdf>{
       hashLength: 32,
     ),
   ),
-  KdfChoice.sha1: HashKdf(hashAlgorithm: Sha1()),
-  KdfChoice.sha256: HashKdf(hashAlgorithm: Sha256()),
-  KdfChoice.sha512: HashKdf(hashAlgorithm: Sha512()),
+  KdfChoice.sha1: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha1())),
+  KdfChoice.sha256: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha256())),
+  KdfChoice.sha512: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha512())),
 };
 
 Kdf getKdf(final KdfChoice choice) {
-  final kdfAlgorithm = _kdfChoiceToAlgorithm[choice];
-  if (kdfAlgorithm == null) {
+  final kdf = _kdfChoiceToAlgorithm[choice];
+  if (kdf == null) {
     throw UnsupportedAlgorithmException('KDF algorithm $choice is not supported.');
   }
-  return kdfAlgorithm;
+  return kdf;
 }
 
 /// Key derivation function (KDF) interface.
@@ -65,7 +66,7 @@ abstract class Kdf {
 
 ///  RFC 5054 compliant hash-based KDF.
 ///
-/// Implements: x = H(s, H( I | ‘:’ | p ))
+/// Implements: x = H(s, H( I | ':' | p ))
 ///
 /// This is primarily offered for compatibility with other SRP
 /// implementations using the non-standard KDF found in RFC 5054. It is fast to
@@ -77,9 +78,9 @@ abstract class Kdf {
 /// deliberately slower) KDF should be used in production, such as Argon2id,
 /// scrypt, or high-iteration PBKDF2.
 class HashKdf implements Kdf {
-  final HashAlgorithm hashAlgorithm;
+  final HashFunction hashFunction;
 
-  HashKdf({required this.hashAlgorithm});
+  HashKdf({required this.hashFunction});
 
   @override
   Future<SecretKey> deriveKeyFromPasswordBytes({
@@ -87,20 +88,20 @@ class HashKdf implements Kdf {
     required Uint8List salt,
     Uint8List? userIdBytes,
   }) async {
-    // I | ':' | p if userId is provided, otherwise 
+    // I | ':' | p if userId is provided, otherwise just p.
     final inputToHash = concatenateUserIdAndPassword(userIdBytes, passwordBytes);
 
     // First hash: H(I | ':' | p)
-    final hashedPassword = await hashAlgorithm.hash(inputToHash);
+    final hashedPassword = await hashFunction.hash(inputToHash);
 
     // RFC 5054: x = H(s, H(I | ':' | p))
     final combined = Uint8List.fromList([
       ...salt,
-      ...hashedPassword.bytes,
+      ...hashedPassword,
     ]);
-    final finalHash = await hashAlgorithm.hash(combined);
+    final finalHash = await hashFunction.hash(combined);
 
-    return SecretKey(finalHash.bytes);
+    return SecretKey(finalHash);
   }
 }
 

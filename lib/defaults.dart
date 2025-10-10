@@ -6,11 +6,11 @@ import 'package:dsrp/crypto/kdf.dart';
 /// No performance penalty on 32-bit systems, unlike SHA512. Avoids SHA1
 /// vulnerability to pre-image attacks that could eventually be exploited in a
 /// brute-force-on-the-verifier scenario.
-const defaultHashAlgorithmChoice = HashAlgorithmChoice.sha256;
+const defaultHashFunctionChoice = HashFunctionChoice.sha256;
 
 /// Intentionally slow and memory intensive to optimize for protection from
 /// brute-force attempts to derive the password from the verifier.
-const defaultKdfAlgorithmChoice = KdfChoice.argon2id;
+const defaultKdfChoice = KdfChoice.argon2id;
 
 /// 2 is the standard generator from RFC5054.
 ///

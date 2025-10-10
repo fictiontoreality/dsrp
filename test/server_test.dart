@@ -21,7 +21,7 @@ void main() {
         verifierKey: verifierKey,
         generator: BigInt.from(generator),
         safePrime: safePrime,
-        hashAlgorithm: hashAlgorithmChoice,
+        hashFunction: hashFunctionChoice,
       );
     });
 
@@ -29,7 +29,7 @@ void main() {
       test('parameters are processed correctly', () {
         expect(server.generator.toInt(), generator);
         expect(server.safePrime.toByteList(), safePrime);
-        expect(server.hashAlgorithmChoice, hashAlgorithmChoice);
+        expect(server.hashFunctionChoice, hashFunctionChoice);
       });
 
       test('uses default generator when not provided', () {
@@ -51,7 +51,7 @@ void main() {
         expect(challenge.generator, generator);
         expect(challenge.safePrime, safePrime);
         expect(challenge.verifierKeySalt, salt);
-        expect(challenge.hashAlgorithm, hashAlgorithmChoice);
+        expect(challenge.hashFunction, hashFunctionChoice);
       });
 
       test('generated server public key matches pysrp', () async {

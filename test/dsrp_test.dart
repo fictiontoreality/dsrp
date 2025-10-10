@@ -14,7 +14,7 @@ void main() {
 
     final user = await User.fromUserCredsAndChallenge(
       userId: username, password: password,
-      challenge: challenge, kdfAlgorithm: kdfAlgorithmChoice,
+      challenge: challenge, kdf: kdfChoice,
     );
     final userSessionVerifiers = user.getUserSessionVerifiers();
 
@@ -32,7 +32,7 @@ void main() {
           // Registration.
           final saltedVerificationKey = await User.createSaltedVerificationKey(
             userId: username, password: password,
-            kdfAlgorithm: kdfAlgorithmChoice);
+            kdf: kdfChoice);
           // Authentication.
           await authenticate(saltedVerificationKey.key, saltedVerificationKey.salt);
       });
@@ -74,7 +74,7 @@ void main() {
             password: password,
             generator: generator,
             safePrime: safePrime,
-            kdfAlgorithm: KdfChoice.sha1,
+            kdf: KdfChoice.sha1,
             salt: salt,
           );
 
@@ -88,7 +88,7 @@ void main() {
             verifierKey: saltedVerificationKey.key,
             generator: BigInt.from(generator),
             safePrime: safePrime,
-            hashAlgorithm: HashAlgorithmChoice.sha1,
+            hashFunction: HashFunctionChoice.sha1,
           );
 
           final challenge = await server.createChallenge();
@@ -97,7 +97,7 @@ void main() {
             userId: username,
             password: password,
             challenge: challenge,
-            kdfAlgorithm: KdfChoice.sha1,
+            kdf: KdfChoice.sha1,
           );
 
           final userSessionVerifiers = user.getUserSessionVerifiers();
@@ -118,7 +118,7 @@ void main() {
             password: password,
             generator: generator,
             safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
           );
 
           // Authentication without userId in private key.
@@ -136,7 +136,7 @@ void main() {
             userId: username,
             password: password,
             challenge: challenge,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             useUserIdInPrivateKey: false,
           );
 
@@ -159,7 +159,7 @@ void main() {
             password: password,
             generator: generator,
             safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
           );
 
           final server = Server(
@@ -177,7 +177,7 @@ void main() {
             userId: username,
             password: password,
             challenge: challenge,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             useUserIdInPrivateKey: false,
           );
 
@@ -198,7 +198,7 @@ void main() {
               final saltedVerificationKey = await User.createSaltedVerificationKey(
                 userId: username, password: password,
                 generator: generator, safePrime: safePrime,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final server = Server(
@@ -229,7 +229,7 @@ void main() {
                 safePrime: safePrime,
                 ephemeralServerPublicKey: safePrime, // B = N (0 mod N)
                 verifierKeySalt: salt,
-                hashAlgorithm: hashAlgorithmChoice,
+                hashFunction: hashFunctionChoice,
               );
 
               // Attack: User tries to process challenge with invalid B.
@@ -238,7 +238,7 @@ void main() {
                   userId: username,
                   password: password,
                   challenge: challenge,
-                  kdfAlgorithm: kdfAlgorithmChoice,
+                  kdf: kdfChoice,
                 ),
                 throwsA(isA<InvalidParameterException>()),
               );
@@ -248,7 +248,7 @@ void main() {
               final saltedVerificationKey = await User.createSaltedVerificationKey(
                 userId: username, password: password,
                 generator: generator, safePrime: safePrime,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final server = Server(
@@ -266,7 +266,7 @@ void main() {
                 userId: username,
                 password: 'wrongpassword',
                 challenge: challenge,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final userSessionVerifiers = user.getUserSessionVerifiers();
@@ -285,7 +285,7 @@ void main() {
               final saltedVerificationKey = await User.createSaltedVerificationKey(
                 userId: username, password: password,
                 generator: generator, safePrime: safePrime,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final server = Server(
@@ -302,7 +302,7 @@ void main() {
                 userId: username,
                 password: password,
                 challenge: challenge,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final userSessionVerifiers = user.getUserSessionVerifiers();
@@ -325,7 +325,7 @@ void main() {
               final saltedVerificationKey = await User.createSaltedVerificationKey(
                 userId: username, password: password,
                 generator: generator, safePrime: safePrime,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final server = Server(
@@ -362,7 +362,7 @@ void main() {
               final saltedVerificationKey = await User.createSaltedVerificationKey(
                 userId: username, password: password,
                 generator: generator, safePrime: safePrime,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
               );
 
               final server = Server(

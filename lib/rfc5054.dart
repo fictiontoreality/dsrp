@@ -2,16 +2,16 @@
 library;
 
 import 'dart:typed_data';
-import 'package:cryptography/cryptography.dart';
+import 'package:dsrp/crypto/hash.dart';
 
 /// Hashing procedure required by RFC5054 for certain variables.
 ///
 /// RFC5054 requires left-padding pre-concatenated bytes with zeros if bytes
 /// length less than that of the safe prime.
-Future<List<int>> hashRfc5054({
+Future<Uint8List> hashRfc5054({
     required List<List<int>> byteLists,
     required List<int> safePrime,
-    required HashAlgorithm hashAlgorithm
+    required HashFunction hashFunction
 }) async {
   var bytes = <int>[];
   for (var byteList in byteLists) {
@@ -19,8 +19,8 @@ Future<List<int>> hashRfc5054({
     bytes += List<int>.generate(safePrime.length - byteList.length, (index) => 0);
     bytes += byteList;
   }
-  final hash = await hashAlgorithm.hash(bytes);
-  return hash.bytes;
+  final hash = await hashFunction.hash(Uint8List.fromList(bytes));
+  return hash;
 }
 
 /// Returns `userId:password` if [userIdBytes] is non-null, else

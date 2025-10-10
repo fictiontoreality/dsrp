@@ -15,7 +15,7 @@ void main() {
           final verifierKey = await User.createSaltedVerificationKey(
             userId: username, password: password,
             generator: generator, safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             salt: salt);
           expect(verifierKey.salt, salt);
           expect(verifierKey.key, expectedVerifierKey);
@@ -25,13 +25,13 @@ void main() {
           final verifierKeyWithUserId = await User.createSaltedVerificationKey(
             userId: username, password: password,
             generator: generator, safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             salt: salt);
 
           final verifierKeyWithoutUserId = await User.createSaltedVerificationKey(
             password: password,
             generator: generator, safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             salt: salt);
           
           expect(verifierKeyWithoutUserId.key, isNot(equals(verifierKeyWithUserId.key)));
@@ -41,13 +41,13 @@ void main() {
           final verifierKey1 = await User.createSaltedVerificationKey(
             password: password,
             generator: generator, safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             salt: salt);
 
           final verifierKey2 = await User.createSaltedVerificationKey(
             password: password,
             generator: generator, safePrime: safePrime,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             salt: salt);
 
           // Should generate same verifier when userId is not used.
@@ -86,14 +86,14 @@ void main() {
       final challenge = Challenge(
         generator: generator, safePrime: safePrime,
         ephemeralServerPublicKey: serverPublicKey, verifierKeySalt: salt,
-        hashAlgorithm: hashAlgorithmChoice);
+        hashFunction: hashFunctionChoice);
 
       late User user;
 
       setUp(() async {
           user = await User.fromUserCredsAndChallenge(
             userId: username, password: password, challenge: challenge,
-            kdfAlgorithm: kdfAlgorithmChoice,
+            kdf: kdfChoice,
             ephemeralUserPrivateKey: userPrivateKey
           );
       });
@@ -135,7 +135,7 @@ void main() {
           test('session key and verifier changes when user id is not used to generate private key', () async {
               final user2 = await User.fromUserCredsAndChallenge(
                 userId: username, password: password, challenge: challenge,
-                kdfAlgorithm: kdfAlgorithmChoice,
+                kdf: kdfChoice,
                 ephemeralUserPrivateKey: userPrivateKey,
                 useUserIdInPrivateKey: false,
               );

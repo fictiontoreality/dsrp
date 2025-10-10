@@ -1,7 +1,7 @@
 import 'dart:convert' show utf8;
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
-import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfAlgorithmChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
+import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException;
 import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/crypto/kdf.dart';
@@ -84,9 +84,9 @@ class User {
   /// Stored as Uint8List to allow secure erasure from memory.
   Uint8List? _passwordBytes;
   /// Hash algorithm used during SRP ephemeral key and verifier calculations (e.g., SHA256).
-  final HashAlgorithm _hashAlgorithm;
+  final HashFunction _hashFunction;
   /// Secure KDF algorithm used to derive user private key.
-  final Kdf _kdfAlgorithm;
+  final Kdf _kdf;
   /// A generator modulo N (the safe prime).
   /// Typically denoted 'g'.
   final BigInt generator;
@@ -144,7 +144,7 @@ class User {
   /// If [useUserIdInPrivateKey] is false, the user ID is only used to generate
   /// the user-side verifier.
   ///
-  /// If [kdfAlgorithm] is not provided, Argon2id is used since it is slow and
+  /// If [kdf] is not provided, Argon2id is used since it is slow and
   /// hence relatively secure. Be sure this KDF matches the one used during
   /// registration.
   ///
@@ -157,7 +157,7 @@ class User {
     required String password,
     required Challenge challenge,
     final bool useUserIdInPrivateKey = true,
-    final KdfChoice kdfAlgorithm = defaultKdfAlgorithmChoice,
+    final KdfChoice kdf = defaultKdfChoice,
     final List<int>? ephemeralUserPrivateKey,
   }) async {
     return fromUserCredsBytesAndChallenge(
@@ -165,7 +165,7 @@ class User {
       passwordBytes: Uint8List.fromList(utf8.encode(password)),
       challenge: challenge,
       useUserIdInPrivateKey: useUserIdInPrivateKey,
-      kdfAlgorithm: kdfAlgorithm,
+      kdf: kdf,
       ephemeralUserPrivateKey: ephemeralUserPrivateKey,
     );
   }
@@ -184,7 +184,7 @@ class User {
   /// If [useUserIdInPrivateKey] is false, the user ID is only used to generate
   /// the user-side verifier.
   ///
-  /// If [kdfAlgorithm] is not provided, Argon2id is used since it is slow and
+  /// If [kdf] is not provided, Argon2id is used since it is slow and
   /// hence relatively secure. Be sure this KDF matches the one used during
   /// registration.
   ///
@@ -199,7 +199,7 @@ class User {
     required Uint8List passwordBytes,
     required Challenge challenge,
     final bool useUserIdInPrivateKey = true,
-    final KdfChoice kdfAlgorithm = defaultKdfAlgorithmChoice,
+    final KdfChoice kdf = defaultKdfChoice,
     final List<int>? ephemeralUserPrivateKey,
   }) async {
     final user = User._(
@@ -209,8 +209,8 @@ class User {
       safePrime: challenge.safePrime.toBigInt(),
       verifierKeySalt: challenge.verifierKeySalt,
       useUserIdInPrivateKey: useUserIdInPrivateKey,
-      hashAlgorithm: challenge.hashAlgorithm,
-      kdfAlgorithm: kdfAlgorithm,
+      hashFunction: challenge.hashFunction,
+      kdf: kdf,
     );
     user._generateEphemeralUserAsymmetricKeys(
       ephemeralUserPrivateKeyBytes: ephemeralUserPrivateKey);
@@ -231,11 +231,11 @@ class User {
     required this.safePrime,
     required List<int> verifierKeySalt,
     required this.useUserIdInPrivateKey,
-    required HashAlgorithmChoice hashAlgorithm,
-    required KdfChoice kdfAlgorithm,
+    required HashFunctionChoice hashFunction,
+    required KdfChoice kdf,
   }): _passwordBytes = passwordBytes, _userIdBytes = userIdBytes, _verifierKeySalt = verifierKeySalt,
-    _hashAlgorithm = getHashAlgorithm(hashAlgorithm),
-    _kdfAlgorithm = getKdf(kdfAlgorithm);
+    _hashFunction = getHashFunction(hashFunction),
+    _kdf = getKdf(kdf);
 
   /// Creates a salted verification key.
   ///
@@ -246,7 +246,7 @@ class User {
   /// to generate your own safe prime instead to reduce the chance of a
   /// pre-computed attack on common safe primes impacting your users.
   ///
-  /// If [kdfAlgorithm] is not provided, Argon2id is used since it is slow and
+  /// If [kdf] is not provided, Argon2id is used since it is slow and
   /// hence relatively secure.
   ///
   /// If [salt] is not provided then a 32-byte random salt is generated.
@@ -268,7 +268,7 @@ class User {
       required String password,
       String? userId,
       int? generator, List<int>? safePrime,
-      KdfChoice? kdfAlgorithm,
+      KdfChoice? kdf,
       List<int>? salt
   }) async {
     return createSaltedVerificationKeyFromBytes(
@@ -276,7 +276,7 @@ class User {
       userIdBytes: userId != null ? Uint8List.fromList(utf8.encode(userId)) : null,
       generator: generator,
       safePrime: safePrime,
-      kdfAlgorithm: kdfAlgorithm,
+      kdf: kdf,
       salt: salt,
     );
   }
@@ -290,7 +290,7 @@ class User {
   /// to generate your own safe prime instead to reduce the chance of a
   /// pre-computed attack on common safe primes impacting your users.
   ///
-  /// If [kdfAlgorithm] is not provided, Argon2id is used since it is slow and
+  /// If [kdf] is not provided, Argon2id is used since it is slow and
   /// hence relatively secure.
   ///
   /// If [salt] is not provided then a 32-byte random salt is generated.
@@ -318,7 +318,7 @@ class User {
       required Uint8List passwordBytes,
       Uint8List? userIdBytes,
       int? generator, List<int>? safePrime,
-      KdfChoice? kdfAlgorithm,
+      KdfChoice? kdf,
       List<int>? salt
   }) async {
     final generatorBigInt = generator != null ? BigInt.from(generator) : defaultGenerator;
@@ -326,13 +326,13 @@ class User {
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
-    final chosenKdfAlgorithm = getKdf(kdfAlgorithm ?? defaultKdfAlgorithmChoice);
+    final chosenKdf = getKdf(kdf ?? defaultKdfChoice);
     salt ??= generateRandomBytes(defaultSaltByteLengthForSaltedVerificationKey);
     final privateKey = await _derivePrivateKey(
       userIdBytes: userIdBytes,
       passwordBytes: passwordBytes,
       salt: Uint8List.fromList(salt),
-      secureKdfAlgorithm: chosenKdfAlgorithm
+      kdf: chosenKdf
     );
     final verifierKey = _deriveVerificationKey(privateKey: privateKey,
       generator: generatorBigInt, safePrime: safePrimeBigInt);
@@ -365,25 +365,25 @@ class User {
     );
     // H(N)
     final hashedSafePrime = (
-      await _hashAlgorithm.hash(safePrime.toByteList())
-    ).bytes.toBigInt();
+      await _hashFunction.hash(Uint8List.fromList(safePrime.toByteList()))
+    ).toBigInt();
     // H(g)
     final hashedGenerator = (
       await _hashRfc5054([generator.toByteList()])
     ).toBigInt();
     // H(I)
-    final hashedUserId = (await _hashAlgorithm.hash(_userIdBytes!)).bytes;
+    final hashedUserId = (await _hashFunction.hash(_userIdBytes!)).toList();
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();
     // M1 = H(H(N) xor H(g), H(I), s, A, B, K)
-    _userSessionKeyVerifier = (await _hashAlgorithm.hash(
-        hashedSafePrimeAndGenerator +
+    _userSessionKeyVerifier = (await _hashFunction.hash(
+        Uint8List.fromList(hashedSafePrimeAndGenerator +
         hashedUserId +
         challenge.verifierKeySalt +
         _ephemeralUserPublicKeyBytes! +
         challenge.ephemeralServerPublicKey +
-        sessionKey
-    )).bytes;
+        sessionKey)
+    )).toList();
   }
 
   /// Retrieve user session verifiers to send to server.
@@ -406,9 +406,9 @@ class User {
   /// server response to the client-generated session key verifier M1.
   Future<void> verifySession(List<int> serverSessionKeyVerifier) async {
     // M2 = H(A, M, K)
-    final expectedServerSessionKeyVerifier = (await _hashAlgorithm.hash(
-        _ephemeralUserPublicKeyBytes! + _userSessionKeyVerifier + sessionKey
-    )).bytes;
+    final expectedServerSessionKeyVerifier = (await _hashFunction.hash(
+        Uint8List.fromList(_ephemeralUserPublicKeyBytes! + _userSessionKeyVerifier + sessionKey)
+    )).toList();
     if (!serverSessionKeyVerifier.shallowEquals(expectedServerSessionKeyVerifier)) {
       throw AuthenticationFailure('Server session key failed verification.');
     }
@@ -431,10 +431,10 @@ class User {
   static Future<BigInt> _derivePrivateKey({
       required Uint8List passwordBytes,
       required Uint8List salt,
-      required Kdf secureKdfAlgorithm,
+      required Kdf kdf,
       Uint8List? userIdBytes,
   }) async {
-    final privateKey = await secureKdfAlgorithm.deriveKeyFromPasswordBytes(
+    final privateKey = await kdf.deriveKeyFromPasswordBytes(
       passwordBytes: passwordBytes,
       salt: salt,
       userIdBytes: userIdBytes,
@@ -465,7 +465,7 @@ class User {
       userIdBytes: useUserIdInPrivateKey ? _userIdBytes : null,
       passwordBytes: _passwordBytes!,
       salt: Uint8List.fromList(_verifierKeySalt),
-      secureKdfAlgorithm: _kdfAlgorithm,
+      kdf: _kdf,
     );
     //TODO: Erase no longer needed verifier key. After Uint8 switch.
     // _verifierKeySalt.overwriteWithZeros();
@@ -500,19 +500,19 @@ class User {
     // S = (B - kv) ^ (a + ux)
     final secret = firstTerm.modPow(secondTerm, safePrime);
     // K = H( (B - kg^x) ^ (a + ux) ) = H( (B - kv) ^ (a + ux) ) = H(S)
-    final sessionKey = (await _hashAlgorithm.hash(secret.toByteList())).bytes;
+    final sessionKey = (await _hashFunction.hash(Uint8List.fromList(secret.toByteList()))).toList();
     return sessionKey;
   }
 
   /// Utility method to perform a RFC 5054 compliant hash with appropriate
   /// padding and concatenation.
-  Future<List<int>> _hashRfc5054(List<List<int>> byteLists) async {
+  Future<Uint8List> _hashRfc5054(List<List<int>> byteLists) async {
     //OPTIMIZE: Make this a class field.
     final safePrimeBytes = safePrime.toByteList();
     return hashRfc5054(
       byteLists: byteLists,
       safePrime: safePrimeBytes,
-      hashAlgorithm: _hashAlgorithm
+      hashFunction: _hashFunction
     );
   }
 }
