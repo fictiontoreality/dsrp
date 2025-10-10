@@ -1,131 +1,177 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# dsrp
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages).
+A pure Dart implementation of the [Secure Remote Password (SRP-6a)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol) protocol for secure user authentication.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages).
--->
-
-dsrp is a pure Dart implementation of the [Secure Remote Password (SRP)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol)
-user authentication protocol.
-
-SRP allows a user to authenticate with a server without ever passing
-password-equivalent information to the server, avoiding a large class
-of man-in-the-middle attacks.
+SRP allows password-based authentication without transmitting password-equivalent information to the server, protecting against man-in-the-middle attacks and server database breaches.
 
 ## Features
 
-* implements both user and server side of authentication.
-* allows custom safe primes and generators to be used to decrease chance of pre-computed brute force attacks.
-* fully interopable with [pysrp](https://github.com/cocagne/pysrp), a Python SRP library.
+* **Zero-knowledge password proof** - Server never receives password or password-equivalent data.
+* **Pure Dart** - Works on all Dart platforms (Flutter mobile, web, desktop, and server).
+* **Mutual authentication** - Both client and server verify each other's identity.
+* **Secure session keys** - Generates shared symmetric keys for encrypted communication to optionally supplement other encryption layers such as TLS.
+* **RFC5054 compliant** - compatible with SRP-6a, the most widely adopted standard for SRP.
+* **Customizable cryptography** - Support for multiple hash algorithms (SHA256, SHA512, SHA1) and KDFs (Argon2id, PBKDF2).
+* **Custom safe primes** - Generate your own primes to reduce vulnerability to pre-computed attacks.
+* **Memory security** - Uses `Uint8List` for passwords with secure erasure via `overwriteWithZeros()`.
+* **Defensive copying** - Public APIs return copies to prevent accidental state mutation.
+* **Python interoperability** - Fully compatible with [pysrp](https://github.com/cocagne/pysrp) library.
 
-## Getting started
+## Installation
 
-Simply add dsrp to your Dart or Flutter project's `pubspec.yaml`:
+Add `dsrp` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  dsrp: ^0.0.1
+```
+
+Then run:
+```bash
+dart pub get
+```
+
+If using with Flutter, you can add the [`cryptography_flutter` package](https://github.com/dint-dev/cryptography/tree/master/cryptography_flutter) for platform-specific performance optimizations:
 
 ```
 dependencies:
-   dsrp: ^0.0.1
+  cryptography_flutter: ^2.3.2
 ```
 
 ## Usage
 
-SRP is divided into two phases:
+SRP authentication consists of two phases:
 
-1. Registration, where the user registers a username and associated salted verification key with a server.
-2. Authentication, where user and server both derive and mutually
-   authenticate session keys which are used to encrypt all further
-   communication between the two (in addition to TLS and other
-   encryption).
+### 1. Registration Phase
+
+The user creates a salted verification key from their credentials and sends it to the server for storage:
 
 ```dart
-// Registration.
-final user = User(userId: "fakeuserid", password: "fakepassword");
-final saltedVerificationKey = await user.createSaltedVerificationKey();
+import 'package:dsrp/dsrp.dart';
 
-// Authentication.
-final startAuthData = user.startAuthentication();
+// User creates salted verification key from password
+final saltedVerificationKey = await User.createSaltedVerificationKey(
+  userId: 'alice',
+  password: 'secure-password-123',
+);
 
+// Send saltedVerificationKey.key and saltedVerificationKey.salt to server.
+// Server stores these for future authentication.
+```
+
+### 2. Authentication Phase
+
+The user and server mutually authenticate and derive a shared session key, all
+without the user ever sending their password to the server:
+
+```dart
+// 1. User requests challenge from server (sends userId).
 final server = Server(
-  userId: startAuthData.userId,
-  salt: saltedVerificationKey.salt,
-  verifierKey: saltedVerificationKey.key,
-  ephemeralUserPublicKey: startAuthData.ephemeralUserPublicKey,
+  userId: 'alice',
+  salt: saltedVerificationKey.salt,        // Retrieved from database
+  verifierKey: saltedVerificationKey.key,  // Retrieved from database
 );
 final challenge = await server.createChallenge();
 
-final userSessionKeyVerifier =
-    await user.processChallenge(challenge.salt, challenge.ephemeralServerPublicKey);
+// 2. User processes challenge and generates session verifiers.
+final user = await User.fromUserCredsAndChallenge(
+  userId: 'alice',
+  password: 'secure-password-123',
+  challenge: challenge,
+);
+final userSessionVerifiers = user.getUserSessionVerifiers();
 
-// At this point all further messages between user and server should be encrypted using the session key (e.g., user.getSessionKey(), server.getSessionKey()), in addition to TLS or other encryption.
+// 3. Server verifies user and generates server verifier.
+final serverSessionKeyVerifier = await server.verifySession(
+  ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
+  userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier,
+);
 
-final serverSessionKeyVerifier = await server.verifySession(userSessionKeyVerifier);
-
+// 4. User verifies server (throws exception if verification fails).
 await user.verifySession(serverSessionKeyVerifier);
+
+// 5. Both parties now have identical symmetric session keys for encrypted communication.
+final userSessionKey = user.sessionKey;
+final serverSessionKey = server.sessionKey;
+// userSessionKey == serverSessionKey
 ```
-This and other usage examples are in the `/examples` folder.
+
+**Note**: Session keys supplement but do not replace TLS encryption. Always use TLS for transport security.
+
+A complete working example is in [examples/srp.dart](examples/srp.dart): 
+
+```
+dart examples/srp.dart
+```
 
 ## Security Best Practices
 
-### Generate Safe Primes
+### 1. Generate Custom Safe Primes (Critical for Production)
 
-Pre-published safe primes such as those published in RFC5054 have
-likely been incorporated into pre-computed attacks, which may
-significantly reduce the compute time needed to infer the user
-password and break SFC encryption from eons to hours or even minutes.
+**⚠️ Default primes are NOT recommended for production use.**
 
-Thus it is recommended to generate and use your own safe primes.
+The default safe prime from RFC5054 may be vulnerable to pre-computed attacks. For production deployments, generate your own custom safe primes.
 
-A Python 3 script is included for generating safe primes. See the [README in `scripts/generate_safe_primes`](scripts/generate_safe_primes/README.md) for details.
+See [`scripts/generate_safe_primes/README.md`](scripts/generate_safe_primes/README.md) for details.
 
-### Erase Sensitive Data
+### 2. Use Strong Key Derivation Functions
 
-1. **Use [Uint8List] for sensitive data**: Unlike [String], [Uint8List] can
-   be zeroed out after use to prevent sensitive data from lingering in
-   memory. Always call [overwriteWithZeros()] on the resulting bytes when
-   done.
+The default KDF is Argon2id, which is memory-hard and recommended for password-based key derivation. Alternative KDFs (PBKDF2-SHA256, PBKDF2-SHA512) are available but less secure against brute-force attacks.
 
-2. **Minimize string lifetime**: Convert strings to bytes as early as
-   possible and zero them out as soon as they're no longer needed.
+### 3. SRP Complements, Not Replaces, TLS
 
-3. **Avoid string copies**: Strings are immutable in Dart and cannot be
-   securely erased from memory. The original string may persist in memory
-   until garbage collected.
+SRP provides authentication and session key derivation. **Always use TLS** or similar for transport encryption. SRP session keys can be used for additional application-layer encryption if needed.
 
-**Example:**
+### 4. Handle Sensitive Data Securely
+
+**Best Practice**: Use `Uint8List` for passwords instead of `String` to enable secure memory erasure.
+
+Unlike `String` (which is immutable), `Uint8List` can be zeroed out after use to prevent sensitive data from lingering in memory:
+
 ```dart
-// Convert `password` string obtained from form to bytes, 
-// or more ideally use a secure form that directly stores 
-// the password as bytes to avoid relying no the garbage 
-// collector to delete the string.
+// Method 1: Use the utf8Bytes extension for convenience.
 final passwordBytes = password.utf8Bytes;
-// Remove the password String reference so it can be gargbage collected.
-password = "";
+password = ""; // Clear string reference for garbage collection.
 
-// Use the bytes for cryptographic operations.
-final saltedKey = await User.createSaltedVerificationKey(
-  userId: 'alice',
-  password: passwordBytes,
+final saltedKey = await User.createSaltedVerificationKeyFromBytes(
+  userIdBytes: 'alice'.utf8Bytes,
+  passwordBytes: passwordBytes,
 );
 
-// Zero out sensitive data when done.
+// Zero out sensitive data when done. Does not rely on GC timing.
 passwordBytes.overwriteWithZeros();
+saltedKey.erase();
+
+// Method 2: String-based API (simpler but potentially less secure).
+final saltedKey = await User.createSaltedVerificationKey(
+  userId: 'alice',
+  password: 'secure-password-123', // String persists until GC
+);
 ```
+
+**Key principles:**
+- Convert strings to bytes as early as possible.
+- Remove references to strings as soon as possible to allow them to be garbage collected, e.g. `password = ""` or `password = null` .
+- Zero out byte arrays when no longer needed using `.overwriteWithZeros()`.
+- Use `.erase()` methods on SRP objects (`SaltedVerificationKey`, `Challenge`, `UserSessionVerifiers`) when they are no longer needed.
+- Strings cannot be securely erased like byte arrays can - use byte-based APIs (`createSaltedVerificationKeyFromBytes`, `fromUserCredsBytesAndChallenge`) for maximum security, especially if strings can be avoided entirely.
 
 **Sensitive data examples:**
 - Passwords
-- Passphrases
-- Secret keys
-- User identifiers (if privacy-sensitive)
-- Any sensitive string data used in cryptographic operations
+- Private keys
+- User IDs (if privacy-sensitive)
 
-## Additional Information
+## Additional Resources
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+- **Examples**: See [examples/srp.dart](examples/srp.dart) for a complete authentication flow
+- **API Documentation**: Full API docs available at [pub.dev](https://pub.dev/documentation/dsrp/latest/)
+- **Issues**: Report bugs at the [issue tracker](https://github.com/YOUR_USERNAME/dsrp/issues)
+- **RFC5054**: [SRP specification](https://datatracker.ietf.org/doc/html/rfc5054)
+
+## Contributions
+
+TODO: See [CONTRIBUTION.md](CONTRIBUTION.md).
+
+## License
+
+Apache 2.0 - See [LICENSE](LICENSE) for details.
