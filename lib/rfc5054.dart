@@ -8,6 +8,13 @@ import 'package:dsrp/crypto/hash.dart';
 ///
 /// RFC5054 requires left-padding pre-concatenated bytes with zeros if bytes
 /// length less than that of the safe prime.
+///
+/// **Parameters:**
+/// - [byteLists]: List of byte arrays to concatenate and hash.
+/// - [safePrime]: Safe prime bytes used to determine padding length.
+/// - [hashFunction]: Hash algorithm to use (e.g., SHA-256).
+///
+/// **Returns:** Hash of the zero-padded, concatenated byte arrays.
 Future<Uint8List> hashRfc5054({
     required List<Uint8List> byteLists,
     required Uint8List safePrime,
@@ -29,8 +36,9 @@ Future<Uint8List> hashRfc5054({
   return hash;
 }
 
-/// Returns `userId:password` if [userIdBytes] is non-null, else
-/// [passwordBytes].
+/// Concatenates user ID and password for RFC5054-compliant KDF input.
+///
+/// Returns `userId:password` if [userIdBytes] is non-null, else just [passwordBytes].
 ///
 /// This is the input (I | ':' | p) of the first hash which RFC5054 uses to
 /// derive the user private key using a hash-based KDF:
@@ -39,6 +47,13 @@ Future<Uint8List> hashRfc5054({
 ///
 /// More secure KDFs can also make use of this concatenation as input without
 /// necessarily using the RFC5054 first or second hash.
+///
+/// **Parameters:**
+/// - [userIdBytes]: Optional UTF-8 encoded user identifier bytes.
+/// - [passwordBytes]: UTF-8 encoded password bytes.
+///
+/// **Returns:** `userIdBytes + ':' + passwordBytes` if userIdBytes provided,
+/// otherwise just `passwordBytes`.
 Uint8List concatenateUserIdAndPassword(
   Uint8List? userIdBytes, Uint8List passwordBytes
 ) {

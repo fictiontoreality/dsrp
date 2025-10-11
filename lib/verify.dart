@@ -22,19 +22,27 @@ import 'package:dsrp/util/prime.dart';
 /// Note: This uses a probabilistic primality test (Miller-Rabin) which is
 /// computationally efficient but has a very small chance of false positives.
 /// For cryptographic applications, this is generally acceptable.
+///
+/// **Parameters:**
+/// - [safePrime]: The number to verify as a safe prime.
+/// - [minimumBitLength]: Minimum required bit length for the safe prime (recommended: ≥ 2048).
+///
+/// **Throws:**
+/// - [InvalidParameterException] if the number is not prime, not a safe prime,
+///   or has insufficient bit length.
 void verifySafePrime(BigInt safePrime, int minimumBitLength) {
   // Check if N is prime
   if (!isProbablyPrime(safePrime)) {
     throw InvalidParameterException('Provided "safe prime" is likely not prime.');
   }
 
-  // Check if q = (N - 1) / 2 is also prime
+  // Check if q = (N - 1) / 2 is also prime.
   final sophieGermainPrime = (safePrime - BigInt.one) ~/ BigInt.two;
   if (!isProbablyPrime(sophieGermainPrime)) {
     throw InvalidParameterException('The Sophie Germain prime of the provided "safe prime" is not prime.');
   }
 
-  // Verify the relationship N = 2q + 1
+  // Verify the relationship N = 2q + 1.
   if (safePrime != BigInt.two * sophieGermainPrime + BigInt.one) {
     throw InvalidParameterException('Provided "safe prime" does not have a Sophie Germain prime.');
   }
@@ -59,6 +67,14 @@ void verifySafePrime(BigInt safePrime, int minimumBitLength) {
 /// Note: This uses a probabilistic primality test (Miller-Rabin) which is
 /// computationally efficient but has a very small chance of false positives.
 /// For cryptographic applications, this is generally acceptable.
+///
+/// **Parameters:**
+/// - [generator]: The generator value to verify (typically 2 or 5).
+/// - [safePrime]: The safe prime N that the generator should work with.
+///
+/// **Throws:**
+/// - [InvalidParameterException] if the generator is out of range, not prime,
+///   or does not generate the correct subgroup.
 void verifyGenerator(BigInt generator, BigInt safePrime) {
   if (generator < BigInt.two || generator >= safePrime) {
     throw InvalidParameterException('Generator $generator is out of range 2 <= generator <= safe prime.');
@@ -94,6 +110,13 @@ const int minimumRecommendedSaltByteLength = 16;
 ///
 /// The minimum length can be overridden with [minimumByteLength], but values
 /// below 16 bytes are not recommended for production use.
+///
+/// **Parameters:**
+/// - [salt]: The salt bytes to verify.
+/// - [minimumByteLength]: Minimum required byte length (default: 16 bytes / 128 bits).
+///
+/// **Throws:**
+/// - [InvalidParameterException] if the salt is shorter than the minimum length.
 void verifySalt(Uint8List salt, {int minimumByteLength = minimumRecommendedSaltByteLength}) {
   if (salt.length < minimumByteLength) {
     throw InvalidParameterException(
@@ -109,8 +132,14 @@ void verifySalt(Uint8List salt, {int minimumByteLength = minimumRecommendedSaltB
 /// modulo the safe prime (i.e., key % N ≠ 0). This prevents certain attacks
 /// where an attacker can force the session key to a known value.
 ///
-/// [keyName] should be 'A' for user keys or 'B' for server keys for clear
-/// error messages.
+/// **Parameters:**
+/// - [publicKey]: The ephemeral public key to verify (A for user, B for server).
+/// - [safePrime]: The safe prime N used in the SRP exchange.
+/// - [keyName]: Descriptive name for error messages (e.g., 'A (user)' or 'B (server)').
+///
+/// **Throws:**
+/// - [InvalidParameterException] if the key is invalid (key % N == 0),
+///   which may indicate an attack attempt.
 void verifyEphemeralKey(BigInt publicKey, BigInt safePrime, String keyName) {
   if (publicKey % safePrime == BigInt.zero) {
     throw InvalidParameterException(

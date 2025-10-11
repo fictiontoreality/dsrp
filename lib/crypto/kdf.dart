@@ -7,15 +7,63 @@ import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/exceptions.dart';
 import 'package:dsrp/rfc5054.dart';
 
-/// Choice of key derivation function (KDF) used to derive user private key.
-/// 
-/// Prefer a slower algorithm like Argon2id to significantly reduce the
-/// likelihood of a brute-force attempt to extract the password from
-/// the verifier.
+/// Key derivation functions (KDFs) available for deriving user private keys.
+///
+/// The KDF is used during registration to derive a private key from the user's
+/// password and salt. This private key is then used to generate the verification
+/// key stored on the server.
+///
+/// **Security Considerations:**
+///
+/// The KDF choice is critical for security. A compromised server database
+/// contains verification keys that can be subject to brute-force attacks to
+/// recover passwords. Slower KDFs make such attacks computationally infeasible.
+///
+/// **Recommendations:**
+/// - [argon2id] - **Strongly recommended** for production use (memory-hard, GPU-resistant)
+/// - [sha256] / [sha512] - Fast hash-based KDFs suitable only for compatibility or low-resource environments
+/// - [sha1] - **Not recommended** except for RFC5054 compatibility
+///
+/// The KDF choice must match between registration and authentication phases.
 enum KdfChoice {
+  /// Argon2id KDF - memory-hard password hashing algorithm.
+  ///
+  /// **Strongly recommended for production use.**
+  ///
+  /// Argon2id is the winner of the 2015 Password Hashing Competition and
+  /// provides excellent resistance to both CPU and GPU-based brute-force
+  /// attacks through its memory-hard design.
+  ///
+  /// Configuration:
+  /// - Memory: 64 MB
+  /// - Iterations: 3
+  /// - Parallelism: 4
+  /// - Output length: 32 bytes
   argon2id,
+
+  /// SHA-1 hash-based KDF (RFC5054 style).
+  ///
+  /// Implements: x = H(s, H(I | ':' | p))
+  ///
+  /// **Warning:** Fast to compute, which makes it vulnerable to brute-force
+  /// attacks. Only use for RFC5054 compatibility or extremely low-resource
+  /// environments where Argon2id is not feasible.
   sha1,
+
+  /// SHA-256 hash-based KDF (RFC5054 style).
+  ///
+  /// Implements: x = H(s, H(I | ':' | p))
+  ///
+  /// **Warning:** Fast to compute, which makes it vulnerable to brute-force
+  /// attacks. Prefer [argon2id] for production use.
   sha256,
+
+  /// SHA-512 hash-based KDF (RFC5054 style).
+  ///
+  /// Implements: x = H(s, H(I | ':' | p))
+  ///
+  /// **Warning:** Fast to compute, which makes it vulnerable to brute-force
+  /// attacks. Prefer [argon2id] for production use.
   sha512,
 }
 
@@ -33,6 +81,9 @@ final _kdfChoiceToAlgorithm = <KdfChoice, Kdf>{
   KdfChoice.sha512: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha512())),
 };
 
+/// Returns a [Kdf] implementation for the given [choice].
+///
+/// Throws [UnsupportedAlgorithmException] if the KDF algorithm is not supported.
 Kdf getKdf(final KdfChoice choice) {
   final kdf = _kdfChoiceToAlgorithm[choice];
   if (kdf == null) {
@@ -64,7 +115,7 @@ abstract class Kdf {
   });
 }
 
-///  RFC 5054 compliant hash-based KDF.
+/// RFC 5054 compliant hash-based KDF.
 ///
 /// Implements: x = H(s, H( I | ':' | p ))
 ///

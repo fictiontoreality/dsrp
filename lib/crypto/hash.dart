@@ -5,9 +5,38 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:dsrp/exceptions.dart';
 
+/// Hash algorithms available for use in SRP operations.
+///
+/// These algorithms are used throughout the SRP protocol for:
+/// - Hashing user IDs and safe primes
+/// - Deriving session keys
+/// - Computing verifiers
+///
+/// **Security Considerations:**
+/// - [sha256] is recommended for most use cases (balance of security and performance)
+/// - [sha512] provides stronger security but with performance penalty on 32-bit systems
+/// - [sha1] is provided for RFC5054 compatibility and low-resource environments only
+///
+/// The hash function choice must match between client and server, and must be
+/// the same during both registration and authentication phases.
 enum HashFunctionChoice {
+  /// SHA-1 hash algorithm (160-bit output).
+  ///
+  /// **Warning:** SHA-1 is cryptographically weak and provided only for
+  /// compatibility with RFC5054 and legacy systems. Not recommended for
+  /// production use unless required for interoperability.
   sha1,
+
+  /// SHA-256 hash algorithm (256-bit output).
+  ///
+  /// Recommended default for most applications. Provides good security with
+  /// excellent performance across all platforms.
   sha256,
+
+  /// SHA-512 hash algorithm (512-bit output).
+  ///
+  /// Provides stronger security than SHA-256 but may have performance penalty
+  /// on 32-bit systems. Use when maximum security is required.
   sha512,
 }
 
@@ -17,6 +46,10 @@ final _hashChoiceToAlgorithm = <HashFunctionChoice, HashFunction>{
   HashFunctionChoice.sha512: CryptographyLibHashFunction(hashAlgorithm: Sha512()),
 };
 
+/// Returns a [HashFunction] implementation for the given [choice].
+///
+/// Throws [UnsupportedAlgorithmException] if the hash algorithm is not
+/// supported.
 HashFunction getHashFunction(final HashFunctionChoice choice) {
   final hashFunction = _hashChoiceToAlgorithm[choice];
   if (hashFunction == null) {
