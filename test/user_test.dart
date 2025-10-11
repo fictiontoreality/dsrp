@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart';
 import 'package:dsrp/dsrp.dart';
@@ -172,5 +173,157 @@ void main() {
       });
   });
 
+  group('SaltedVerificationKey JSON serialization tests', () {
+    test('toJson() produces correct JSON structure', () async {
+      final saltedKey = await User.createSaltedVerificationKey(
+        userId: username,
+        password: password,
+        generator: generator,
+        safePrime: safePrime,
+        kdf: kdfChoice,
+        salt: salt,
+      );
 
+      final json = saltedKey.toJson();
+
+      expect(json, isA<Map<String, dynamic>>());
+      expect(json['key'], isA<String>());
+      expect(json['salt'], isA<String>());
+    });
+
+    test('fromJson() reconstructs object correctly', () async {
+      final original = await User.createSaltedVerificationKey(
+        userId: username,
+        password: password,
+        generator: generator,
+        safePrime: safePrime,
+        kdf: kdfChoice,
+        salt: salt,
+      );
+
+      final json = original.toJson();
+      final reconstructed = SaltedVerificationKey.fromJson(json);
+
+      expect(reconstructed.key, equals(original.key));
+      expect(reconstructed.salt, equals(original.salt));
+    });
+
+    test('round-trip through jsonEncode/jsonDecode works correctly', () async {
+      final original = await User.createSaltedVerificationKey(
+        userId: username,
+        password: password,
+        generator: generator,
+        safePrime: safePrime,
+        kdf: kdfChoice,
+        salt: salt,
+      );
+
+      // Serialize to JSON string
+      final jsonString = jsonEncode(original.toJson());
+
+      // Deserialize back
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      final reconstructed = SaltedVerificationKey.fromJson(decoded);
+
+      expect(reconstructed.key, equals(original.key));
+      expect(reconstructed.salt, equals(original.salt));
+    });
+
+    test('JSON contains base64-encoded data', () async {
+      final saltedKey = await User.createSaltedVerificationKey(
+        userId: username,
+        password: password,
+        generator: generator,
+        safePrime: safePrime,
+        kdf: kdfChoice,
+        salt: salt,
+      );
+
+      final json = saltedKey.toJson();
+
+      // Verify base64 encoding can be decoded
+      expect(() => base64.decode(json['key'] as String), returnsNormally);
+      expect(() => base64.decode(json['salt'] as String), returnsNormally);
+
+      // Verify decoded values match original
+      expect(base64.decode(json['key'] as String), equals(saltedKey.key));
+      expect(base64.decode(json['salt'] as String), equals(saltedKey.salt));
+    });
+  });
+
+  group('UserSessionVerifiers JSON serialization tests', () {
+    late UserSessionVerifiers verifiers;
+
+    setUp(() async {
+      final challenge = Challenge(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242]),
+        verifierKeySalt: salt,
+        hashFunction: hashFunctionChoice,
+      );
+
+      final user = await User.fromUserCredsAndChallenge(
+        userId: username,
+        password: password,
+        challenge: challenge,
+        kdf: kdfChoice,
+      );
+
+      verifiers = user.getUserSessionVerifiers();
+    });
+
+    test('toJson() produces correct JSON structure', () {
+      final json = verifiers.toJson();
+
+      expect(json, isA<Map<String, dynamic>>());
+      expect(json['userId'], isA<String>());
+      expect(json['ephemeralUserPublicKey'], isA<String>());
+      expect(json['sessionKeyVerifier'], isA<String>());
+    });
+
+    test('fromJson() reconstructs object correctly', () {
+      final json = verifiers.toJson();
+      final reconstructed = UserSessionVerifiers.fromJson(json);
+
+      expect(reconstructed.userId, equals(verifiers.userId));
+      expect(reconstructed.ephemeralUserPublicKey, equals(verifiers.ephemeralUserPublicKey));
+      expect(reconstructed.sessionKeyVerifier, equals(verifiers.sessionKeyVerifier));
+    });
+
+    test('round-trip through jsonEncode/jsonDecode works correctly', () {
+      // Serialize to JSON string
+      final jsonString = jsonEncode(verifiers.toJson());
+
+      // Deserialize back
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      final reconstructed = UserSessionVerifiers.fromJson(decoded);
+
+      expect(reconstructed.userId, equals(verifiers.userId));
+      expect(reconstructed.ephemeralUserPublicKey, equals(verifiers.ephemeralUserPublicKey));
+      expect(reconstructed.sessionKeyVerifier, equals(verifiers.sessionKeyVerifier));
+    });
+
+    test('JSON contains base64-encoded binary data', () {
+      final json = verifiers.toJson();
+
+      // Verify base64 encoding can be decoded
+      expect(() => base64.decode(json['ephemeralUserPublicKey'] as String), returnsNormally);
+      expect(() => base64.decode(json['sessionKeyVerifier'] as String), returnsNormally);
+
+      // Verify decoded values match original
+      expect(base64.decode(json['ephemeralUserPublicKey'] as String),
+             equals(verifiers.ephemeralUserPublicKey));
+      expect(base64.decode(json['sessionKeyVerifier'] as String),
+             equals(verifiers.sessionKeyVerifier));
+    });
+
+    test('userId is stored as plain string (not base64)', () {
+      final json = verifiers.toJson();
+
+      // userId should be a plain string, not base64
+      expect(json['userId'], equals(username));
+      expect(json['userId'], equals(verifiers.userId));
+    });
+  });
 }

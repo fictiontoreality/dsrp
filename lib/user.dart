@@ -1,4 +1,4 @@
-import 'dart:convert' show utf8;
+import 'dart:convert' show utf8, base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException;
@@ -23,6 +23,36 @@ class SaltedVerificationKey {
 
   SaltedVerificationKey({required this.key, required this.salt});
 
+  /// Converts this object to a JSON-serializable map.
+  ///
+  /// Binary data is encoded as base64 strings for safe transmission over JSON.
+  ///
+  /// Example:
+  /// ```dart
+  /// final json = saltedKey.toJson();
+  /// final jsonString = jsonEncode(json); // Serialize to JSON string
+  /// ```
+  Map<String, dynamic> toJson() => {
+    'key': base64.encode(key),
+    'salt': base64.encode(salt),
+  };
+
+  /// Creates a [SaltedVerificationKey] from a JSON map.
+  ///
+  /// Binary data should be base64-encoded strings in the JSON.
+  ///
+  /// Example:
+  /// ```dart
+  /// final decoded = jsonDecode(jsonString);
+  /// final saltedKey = SaltedVerificationKey.fromJson(decoded);
+  /// ```
+  static SaltedVerificationKey fromJson(Map<String, dynamic> json) {
+    return SaltedVerificationKey(
+      key: base64.decode(json['key'] as String),
+      salt: base64.decode(json['salt'] as String),
+    );
+  }
+
   /// Overwrites sensitive data with zeros.
   void erase() {
     key.overwriteWithZeros();
@@ -41,6 +71,38 @@ class UserSessionVerifiers {
       required this.ephemeralUserPublicKey,
       required this.sessionKeyVerifier
   });
+
+  /// Converts this object to a JSON-serializable map.
+  ///
+  /// Binary data is encoded as base64 strings for safe transmission over JSON.
+  ///
+  /// Example:
+  /// ```dart
+  /// final json = verifiers.toJson();
+  /// final jsonString = jsonEncode(json); // Serialize to JSON string
+  /// ```
+  Map<String, dynamic> toJson() => {
+    'userId': userId,
+    'ephemeralUserPublicKey': base64.encode(ephemeralUserPublicKey),
+    'sessionKeyVerifier': base64.encode(sessionKeyVerifier),
+  };
+
+  /// Creates a [UserSessionVerifiers] from a JSON map.
+  ///
+  /// Binary data should be base64-encoded strings in the JSON.
+  ///
+  /// Example:
+  /// ```dart
+  /// final decoded = jsonDecode(jsonString);
+  /// final verifiers = UserSessionVerifiers.fromJson(decoded);
+  /// ```
+  static UserSessionVerifiers fromJson(Map<String, dynamic> json) {
+    return UserSessionVerifiers(
+      userId: json['userId'] as String,
+      ephemeralUserPublicKey: base64.decode(json['ephemeralUserPublicKey'] as String),
+      sessionKeyVerifier: base64.decode(json['sessionKeyVerifier'] as String),
+    );
+  }
 
   /// Overwrites sensitive data with zeros.
   void erase() {

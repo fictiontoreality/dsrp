@@ -14,7 +14,6 @@ SRP allows password-based authentication without transmitting password-equivalen
 * **Customizable cryptography** - Support for multiple hash algorithms (SHA256, SHA512, SHA1) and KDFs (Argon2id, PBKDF2).
 * **Custom safe primes** - Generate your own primes to reduce vulnerability to pre-computed attacks.
 * **Memory security** - Uses `Uint8List` for passwords with secure erasure via `overwriteWithZeros()`.
-* **Defensive copying** - Public APIs return copies to prevent accidental state mutation.
 * **Python interoperability** - Fully compatible with [pysrp](https://github.com/cocagne/pysrp) library.
 
 ## Installation

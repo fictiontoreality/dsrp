@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
@@ -156,6 +157,137 @@ void main() {
 
         expect(server.sessionKey, isNotNull);
       });
+    });
+  });
+
+  group('Challenge JSON serialization tests', () {
+    late Challenge challenge;
+
+    setUp(() async {
+      final server = Server(
+        userId: username,
+        salt: salt,
+        verifierKey: verifierKey,
+        generator: generator,
+        safePrime: safePrime,
+        hashFunction: hashFunctionChoice,
+      );
+
+      challenge = await server.createChallenge();
+    });
+
+    test('toJson() produces correct JSON structure', () {
+      final json = challenge.toJson();
+
+      expect(json, isA<Map<String, dynamic>>());
+      expect(json['generator'], isA<String>());
+      expect(json['safePrime'], isA<String>());
+      expect(json['ephemeralServerPublicKey'], isA<String>());
+      expect(json['verifierKeySalt'], isA<String>());
+      expect(json['hashFunction'], isA<String>());
+    });
+
+    test('fromJson() reconstructs object correctly', () {
+      final json = challenge.toJson();
+      final reconstructed = Challenge.fromJson(json);
+
+      expect(reconstructed.generator, equals(challenge.generator));
+      expect(reconstructed.safePrime, equals(challenge.safePrime));
+      expect(reconstructed.ephemeralServerPublicKey, equals(challenge.ephemeralServerPublicKey));
+      expect(reconstructed.verifierKeySalt, equals(challenge.verifierKeySalt));
+      expect(reconstructed.hashFunction, equals(challenge.hashFunction));
+    });
+
+    test('round-trip through jsonEncode/jsonDecode works correctly', () {
+      // Serialize to JSON string
+      final jsonString = jsonEncode(challenge.toJson());
+
+      // Deserialize back
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      final reconstructed = Challenge.fromJson(decoded);
+
+      expect(reconstructed.generator, challenge.generator);
+      expect(reconstructed.safePrime, challenge.safePrime);
+      expect(reconstructed.ephemeralServerPublicKey, challenge.ephemeralServerPublicKey);
+      expect(reconstructed.verifierKeySalt, challenge.verifierKeySalt);
+      expect(reconstructed.hashFunction, challenge.hashFunction);
+    });
+
+    test('JSON contains base64-encoded binary data', () {
+      final json = challenge.toJson();
+
+      // Verify base64 encoding can be decoded
+      expect(() => base64.decode(json['ephemeralServerPublicKey'] as String), returnsNormally);
+      expect(() => base64.decode(json['verifierKeySalt'] as String), returnsNormally);
+
+      // Verify decoded values match original
+      expect(base64.decode(json['ephemeralServerPublicKey'] as String),
+             challenge.ephemeralServerPublicKey);
+      expect(base64.decode(json['verifierKeySalt'] as String),
+             challenge.verifierKeySalt);
+    });
+
+    test('BigInt values are stored as decimal strings', () {
+      final json = challenge.toJson();
+
+      // Verify BigInt values can be parsed
+      expect(() => BigInt.parse(json['generator'] as String), returnsNormally);
+      expect(() => BigInt.parse(json['safePrime'] as String), returnsNormally);
+
+      // Verify parsed values match original
+      expect(BigInt.parse(json['generator'] as String), challenge.generator);
+      expect(BigInt.parse(json['safePrime'] as String), challenge.safePrime);
+    });
+
+    test('HashFunctionChoice enum is stored by name', () {
+      final json = challenge.toJson();
+
+      // Verify enum is stored as string
+      expect(json['hashFunction'], challenge.hashFunction.name);
+
+      // Verify it can be reconstructed
+      expect(HashFunctionChoice.values.byName(json['hashFunction'] as String),
+             challenge.hashFunction);
+    });
+
+    test('handles large BigInt values correctly', () {
+      // Create a challenge with default (very large) safe prime
+      final largeChallenge = Challenge(
+        generator: BigInt.two,
+        safePrime: BigInt.parse(
+          'EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C'
+          '9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE4'
+          '8E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B29'
+          '7BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9A'
+          'FD5138FE8376435B9FC61D2FC0EB06E3', radix: 16),
+        ephemeralServerPublicKey: Uint8List.fromList([1, 2, 3]),
+        verifierKeySalt: Uint8List.fromList([4, 5, 6]),
+        hashFunction: HashFunctionChoice.sha256,
+      );
+
+      final jsonString = jsonEncode(largeChallenge.toJson());
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      final reconstructed = Challenge.fromJson(decoded);
+
+      expect(reconstructed.safePrime, largeChallenge.safePrime);
+      expect(reconstructed.generator, largeChallenge.generator);
+    });
+
+    test('handles all HashFunctionChoice values', () {
+      for (final hashFunc in HashFunctionChoice.values) {
+        final testChallenge = Challenge(
+          generator: generator,
+          safePrime: safePrime,
+          ephemeralServerPublicKey: challenge.ephemeralServerPublicKey,
+          verifierKeySalt: challenge.verifierKeySalt,
+          hashFunction: hashFunc,
+        );
+
+        final json = testChallenge.toJson();
+        final reconstructed = Challenge.fromJson(json);
+
+        expect(reconstructed.hashFunction, hashFunc);
+      }
     });
   });
 }

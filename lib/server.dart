@@ -1,4 +1,4 @@
-import 'dart:convert' show utf8;
+import 'dart:convert' show utf8, base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashFunctionChoice, defaultSafePrime, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
@@ -35,6 +35,44 @@ class Challenge {
       required this.verifierKeySalt,
       required this.hashFunction
   });
+
+  /// Converts this object to a JSON-serializable map.
+  ///
+  /// Binary data is encoded as base64 strings, and BigInt values are encoded
+  /// as decimal strings for safe transmission over JSON.
+  ///
+  /// Example:
+  /// ```dart
+  /// final json = challenge.toJson();
+  /// final jsonString = jsonEncode(json); // Serialize to JSON string
+  /// ```
+  Map<String, dynamic> toJson() => {
+    'generator': generator.toString(),
+    'safePrime': safePrime.toString(),
+    'ephemeralServerPublicKey': base64.encode(ephemeralServerPublicKey),
+    'verifierKeySalt': base64.encode(verifierKeySalt),
+    'hashFunction': hashFunction.name,
+  };
+
+  /// Creates a [Challenge] from a JSON map.
+  ///
+  /// Binary data should be base64-encoded strings, and BigInt values should be
+  /// decimal strings in the JSON.
+  ///
+  /// Example:
+  /// ```dart
+  /// final decoded = jsonDecode(jsonString);
+  /// final challenge = Challenge.fromJson(decoded);
+  /// ```
+  static Challenge fromJson(Map<String, dynamic> json) {
+    return Challenge(
+      generator: BigInt.parse(json['generator'] as String),
+      safePrime: BigInt.parse(json['safePrime'] as String),
+      ephemeralServerPublicKey: base64.decode(json['ephemeralServerPublicKey'] as String),
+      verifierKeySalt: base64.decode(json['verifierKeySalt'] as String),
+      hashFunction: HashFunctionChoice.values.byName(json['hashFunction'] as String),
+    );
+  }
 
   /// Overwrites sensitive data with zeros.
   void erase() {
