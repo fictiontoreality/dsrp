@@ -1,4 +1,4 @@
-import 'dart:convert' show utf8, base64;
+import 'dart:convert' show base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashFunctionChoice, defaultSafePrime, deriveOptimalByteLengthForEphemeralKeys;
 import 'package:dsrp/exceptions.dart' show AuthenticationFailure;

@@ -405,7 +405,7 @@ class User {
 
   /// Generates ephemeral user public and private keys which are used only
   /// during SRP login and then discarded.
-  _generateEphemeralUserAsymmetricKeys({Uint8List? ephemeralUserPrivateKeyBytes}) {
+  void _generateEphemeralUserAsymmetricKeys({Uint8List? ephemeralUserPrivateKeyBytes}) {
     ephemeralUserPrivateKeyBytes ??= generateRandomBytes(
       deriveOptimalByteLengthForEphemeralKeys(safePrime.bitLength)
     );

@@ -1,0 +1,6 @@
+.git/
+.github/
+.dart_tool/
+scripts/
+CLAUDE.md
+release-plan.md
