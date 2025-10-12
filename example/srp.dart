@@ -57,7 +57,8 @@ void main() async {
     safePrime: safePrime,
   );
 
-  // SECURITY: Zero out password bytes immediately after use.
+  // SECURITY: Zero out credential bytes immediately after use.
+  userIdBytes.overwriteWithZeros();
   passwordBytes.overwriteWithZeros();
 
   // 2. The salted verification key is sent to the server, along with user ID,
@@ -94,17 +95,21 @@ void main() async {
   // 2. The user processes the challenge to generate a session key and its
   // verifiers.
 
-  // SECURITY: Re-create password bytes for authentication (original was zeroed
+  // SECURITY: Re-create credential bytes for authentication (originals were zeroed
   // during registration).
-  final passwordBytesForAuth = password.utf8Bytes;
+  final userIdBytesForAuth = userId.utf8Bytes;
+  String passwordForAuth = 'fakepassword';
+  final passwordBytesForAuth = passwordForAuth.utf8Bytes;
+  passwordForAuth = ''; // Allows for GC.
 
   final user = await User.fromUserCredsBytesAndChallenge(
-    userIdBytes: userIdBytes,
+    userIdBytes: userIdBytesForAuth,
     passwordBytes: passwordBytesForAuth,
     challenge: challenge,
   );
 
-  // SECURITY: Zero out password bytes and challenge after use.
+  // SECURITY: Zero out credentials and challenge after use.
+  userIdBytesForAuth.overwriteWithZeros();
   passwordBytesForAuth.overwriteWithZeros();
   challenge.erase();
 
@@ -124,8 +129,8 @@ void main() async {
   final serverSessionKeyVerifier = await server.verifySession(
     ephemeralUserPublicKey: userSessionVerifiers.ephemeralUserPublicKey,
     userSessionKeyVerifier: userSessionVerifiers.sessionKeyVerifier);
-  userSessionVerifiers.erase();
   log.info('Server verified session and generated a session verifier, sent it to the user.');
+  userSessionVerifiers.erase();
 
   // 5. The user verifies the server session key. Throws an exception if
   // verification fails.
@@ -142,9 +147,6 @@ void main() async {
   // the shared SRP session key to encrypt messages for this user session.
   log.info('User verified session and now SRP-encrypted communication can begin.');
   log.info('Session keys match: ${user.sessionKey.length} bytes');
-
-  // SECURITY: Clean up user ID bytes when no longer needed.
-  userIdBytes.overwriteWithZeros();
 
   // NOTE: Keep user.sessionKey and server.sessionKey for encrypted
   // communication. Only zero them out when the session ends.

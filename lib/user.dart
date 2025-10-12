@@ -107,7 +107,7 @@ class UserSessionVerifiers {
   /// User identifier (username, email, or unique ID).
   ///
   /// This must match the user ID used during registration and challenge creation.
-  final String userId;
+  String userId;
 
   /// User's ephemeral public key (A) generated for this authentication session.
   ///
@@ -165,6 +165,7 @@ class UserSessionVerifiers {
   /// Call this method after successfully sending the verifiers to the server
   /// to prevent the ephemeral key and session verifier from lingering in memory.
   void erase() {
+    userId = ''; // Allows string to be GC.
     ephemeralUserPublicKey.overwriteWithZeros();
     sessionKeyVerifier.overwriteWithZeros();
   }
@@ -658,9 +659,7 @@ class User {
       kdf: _kdf,
     );
     // Erase no longer needed verifier key and user credentials.
-    // _verifierKeySalt.overwriteWithZeros();
-    // _userIdBytes!.overwriteWithZeros();
-    // _userIdBytes = null;
+    _verifierKeySalt.overwriteWithZeros();
     _passwordBytes!.overwriteWithZeros();
     _passwordBytes = null;
     // v = g^x

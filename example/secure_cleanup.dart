@@ -100,14 +100,16 @@ void main() async {
   // User needs to re-enter password (original was zeroed)
   final passwordForAuth = 'my-secure-password-123'.utf8Bytes;
 
+  // Server retrieves user's data and creates Server instance.
   String usernameForAuth = 'alice';
-  
+
   final server = Server(
     userId: usernameForAuth,
     salt: storedSalt,
     verifierKey: storedKey,
   );
-  usernameForAuth = ''; // Can now be GC.
+  usernameForAuth = ''; // No longer needed, so can be GC.
+
   final challenge = await server.createChallenge();
   print('   ✓ Challenge created');
 
@@ -167,6 +169,8 @@ void main() async {
   print('✓ Convert Strings to Uint8List as early as possible');
   print('✓ Use *FromBytes() methods instead of String methods');
   print('✓ Call .overwriteWithZeros() on passwords immediately after use');
+  print('✓ Server automatically zeros userId internally after hashing');
+  print('✓ Set String variables to empty string after conversion to allow GC');
   print('✓ Call .erase() on SRP objects when no longer needed:');
   print('  • SaltedVerificationKey.erase()');
   print('  • Challenge.erase()');

@@ -112,8 +112,10 @@ class Challenge {
 ///
 /// Designed to mimic the API of Python's pysrp library.
 class Server {
-  /// User identifier.
-  String? _userId;
+  /// User identifier (UTF-8 encoded bytes).
+  ///
+  /// Stored as Uint8List to allow secure erasure from memory after hashing.
+  final Uint8List _userIdBytes;
   /// Salt provided by user during registration.
   final Uint8List _salt;
   /// Verifier key provided by user during registration.
@@ -157,6 +159,7 @@ class Server {
   /// session token / cookie, and need not be used to encrypt messages.
   Uint8List? get sessionKey => _sessionKey != null ? Uint8List.fromList(_sessionKey!) : null;
 
+  /// Creates a Server instance for SRP authentication.
   Server({
       required final String userId,
       required final Uint8List salt,
@@ -165,12 +168,12 @@ class Server {
       final BigInt? safePrime,
       final HashFunctionChoice? hashFunction,
       final HashFunction? customHashFunction,
-  }) : _userId = userId,
+  }): _userIdBytes = userId.utf8Bytes,
        _salt = Uint8List.fromList(salt),
        _verifierKey = verifierKey.toBigInt(),
        generator = generator ?? defaultGenerator,
-       safePrime = safePrime ?? defaultSafePrime,
-       _safePrimeBytes = safePrime?.toByteList() ?? defaultSafePrime.toByteList() {
+       _safePrimeBytes = safePrime?.toByteList() ?? defaultSafePrime.toByteList(),
+       safePrime = safePrime ?? defaultSafePrime {
     // TODO: Move to _resolveHashFunction?
     if (hashFunction != null && customHashFunction != null) {
       throw InvalidParameterException(
@@ -323,8 +326,9 @@ class Server {
     // H(g)
     final hashedGenerator = (await _hashRfc5054([generator.toByteList()])).toBigInt();
     // H(I)
-    final hashedUserId = await _hashFunction.hash(_userId!.utf8Bytes);
-    _userId = null; // No longer needed, delete immediately.
+    final hashedUserId = await _hashFunction.hash(_userIdBytes);
+    // SECURITY: Erase user ID bytes immediately after hashing
+    _userIdBytes.overwriteWithZeros();
     // H(N) xor H(g)
     final hashedSafePrimeAndGenerator = (hashedSafePrime ^ hashedGenerator).toByteList();
     // M1 = H(H(N) xor H(g), H(I), s, A, B, K)

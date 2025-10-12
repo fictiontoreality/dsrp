@@ -239,7 +239,7 @@ final saltedKey = await User.createSaltedVerificationKey(
 
 **Key principles:**
 - Convert strings to bytes as early as possible.
-- Remove references to strings as soon as possible to allow them to be garbage collected, e.g. `password = ""` or `password = null` .
+- Remove references to strings as soon as possible to allow them to be garbage collected, e.g. `password = ""` or `password = null`.
 - Zero out byte arrays when no longer needed using `.overwriteWithZeros()`.
 - Use `.erase()` methods on SRP objects (`SaltedVerificationKey`, `Challenge`, `UserSessionVerifiers`) when they are no longer needed.
 - Strings cannot be securely erased like byte arrays can - use byte-based APIs (`createSaltedVerificationKeyFromBytes`, `fromUserCredsBytesAndChallenge`) for maximum security, especially if strings can be avoided entirely.
