@@ -1,7 +1,7 @@
 import 'dart:convert' show utf8, base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;
-import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException;
+import 'package:dsrp/exceptions.dart' show AuthenticationFailure, CryptographicException, InvalidParameterException;
 import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/crypto/kdf.dart';
 import 'package:dsrp/rfc5054.dart';
@@ -266,7 +266,8 @@ class User {
   ///
   /// If [kdf] is not provided, Argon2id is used since it is slow and
   /// hence relatively secure. Be sure this KDF matches the one used during
-  /// registration.
+  /// registration. Alternatively, provide [customKdf] to use a custom KDF
+  /// implementation (cannot provide both [kdf] and [customKdf]).
   ///
   /// If a [ephemeralUserPrivateKey] is not provided, one is generated.
   ///
@@ -277,7 +278,8 @@ class User {
     required String password,
     required Challenge challenge,
     final bool useUserIdInPrivateKey = true,
-    final KdfChoice kdf = defaultKdfChoice,
+    KdfChoice? kdf,
+    Kdf? customKdf,
     final Uint8List? ephemeralUserPrivateKey,
   }) async {
     return fromUserCredsBytesAndChallenge(
@@ -286,6 +288,7 @@ class User {
       challenge: challenge,
       useUserIdInPrivateKey: useUserIdInPrivateKey,
       kdf: kdf,
+      customKdf: customKdf,
       ephemeralUserPrivateKey: ephemeralUserPrivateKey,
     );
   }
@@ -306,7 +309,8 @@ class User {
   ///
   /// If [kdf] is not provided, Argon2id is used since it is slow and
   /// hence relatively secure. Be sure this KDF matches the one used during
-  /// registration.
+  /// registration. Alternatively, provide [customKdf] to use a custom KDF
+  /// implementation (cannot provide both [kdf] and [customKdf]).
   ///
   /// If a [ephemeralUserPrivateKey] is not provided, one is generated.
   ///
@@ -319,9 +323,44 @@ class User {
     required Uint8List passwordBytes,
     required Challenge challenge,
     final bool useUserIdInPrivateKey = true,
-    final KdfChoice kdf = defaultKdfChoice,
+    HashFunction? customHashFunction,
+    KdfChoice? kdf,
+    Kdf? customKdf,
     final Uint8List? ephemeralUserPrivateKey,
   }) async {
+    //TODO: Move to _resolveKdf method.
+    if (kdf != null && customKdf != null) {
+      throw InvalidParameterException(
+        'Cannot provide both a KDF choice and a custom KDF. Please provide only one.'
+      );
+    }
+    final resolvedKdf = customKdf ?? getKdf(kdf ?? defaultKdfChoice);
+
+    //TODO: Move to _resolveHashFunction method.
+    final HashFunction resolvedHashFunction;
+    if (challenge.isCustomHashFunction) {
+      if (customHashFunction == null) {
+        throw InvalidParameterException(
+          'Server requires custom hash function, but none provided.'
+        );
+      } else if (customHashFunction.name != challenge.hashFunctionName) {
+        throw InvalidParameterException(
+          'Custom hash function name ${customHashFunction.name} does not match server requested hash function ${challenge.hashFunctionName}.'
+        );
+      }
+      resolvedHashFunction = customHashFunction;
+    } else {
+      final hashFunctionChoice = HashFunctionChoice.values.asNameMap()[
+        challenge.hashFunctionName
+      ];
+      if (hashFunctionChoice == null) {
+        throw InvalidParameterException(
+          'Hash function in server challenge is not supported by this client, possibly due to client / server version mismatch.',
+        );
+      }
+      resolvedHashFunction = getHashFunction(hashFunctionChoice);
+    }
+
     final user = User._(
       userIdBytes: userIdBytes,
       passwordBytes: passwordBytes,
@@ -329,8 +368,8 @@ class User {
       safePrime: challenge.safePrime,
       verifierKeySalt: challenge.verifierKeySalt,
       useUserIdInPrivateKey: useUserIdInPrivateKey,
-      hashFunction: challenge.hashFunction,
-      kdf: kdf,
+      hashFunction: resolvedHashFunction,
+      kdf: resolvedKdf,
     );
     user._generateEphemeralUserAsymmetricKeys(
       ephemeralUserPrivateKeyBytes: ephemeralUserPrivateKey);
@@ -346,14 +385,14 @@ class User {
     required this.safePrime,
     required Uint8List verifierKeySalt,
     required this.useUserIdInPrivateKey,
-    required HashFunctionChoice hashFunction,
-    required KdfChoice kdf,
+    required HashFunction hashFunction,
+    required Kdf kdf,
   }): _userIdBytes = Uint8List.fromList(userIdBytes),
       _passwordBytes = Uint8List.fromList(passwordBytes),
       _safePrimeBytes = safePrime.toByteList(),
       _verifierKeySalt = Uint8List.fromList(verifierKeySalt),
-      _hashFunction = getHashFunction(hashFunction),
-      _kdf = getKdf(kdf);
+      _hashFunction = hashFunction,
+      _kdf = kdf;
 
   /// Creates a salted verification key.
   ///
@@ -365,7 +404,8 @@ class User {
   /// pre-computed attack on common safe primes impacting your users.
   ///
   /// If [kdf] is not provided, Argon2id is used since it is slow and
-  /// hence relatively secure.
+  /// hence relatively secure. Alternatively, provide [customKdf] to use a
+  /// custom KDF implementation (cannot provide both [kdf] and [customKdf]).
   ///
   /// If [salt] is not provided then a 32-byte random salt is generated.
   ///
@@ -387,6 +427,7 @@ class User {
       String? userId,
       BigInt? generator, BigInt? safePrime,
       KdfChoice? kdf,
+      Kdf? customKdf,
       Uint8List? salt
   }) async {
     return createSaltedVerificationKeyFromBytes(
@@ -395,6 +436,7 @@ class User {
       generator: generator,
       safePrime: safePrime,
       kdf: kdf,
+      customKdf: customKdf,
       salt: salt,
     );
   }
@@ -409,7 +451,8 @@ class User {
   /// pre-computed attack on common safe primes impacting your users.
   ///
   /// If [kdf] is not provided, Argon2id is used since it is slow and
-  /// hence relatively secure.
+  /// hence relatively secure. Alternatively, provide [customKdf] to use a
+  /// custom KDF implementation (cannot provide both [kdf] and [customKdf]).
   ///
   /// If [salt] is not provided then a 32-byte random salt is generated.
   ///
@@ -437,22 +480,29 @@ class User {
       Uint8List? userIdBytes,
       BigInt? generator, BigInt? safePrime,
       KdfChoice? kdf,
+      Kdf? customKdf,
       Uint8List? salt
   }) async {
+    if (kdf != null && customKdf != null) {
+      throw InvalidParameterException(
+        'Cannot provide both kdf and customKdf. Please provide only one.'
+      );
+    }
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
     final generatorBigInt = generator ?? defaultGenerator;
     final safePrimeBigInt = safePrime ?? defaultSafePrime;
 
-    final chosenKdf = getKdf(kdf ?? defaultKdfChoice);
+    final resolvedKdf = customKdf ?? getKdf(kdf ?? defaultKdfChoice);
     salt ??= generateRandomBytes(defaultSaltByteLengthForSaltedVerificationKey);
     final privateKey = await _derivePrivateKey(
       userIdBytes: userIdBytes,
       passwordBytes: passwordBytes,
       salt: salt,
-      kdf: chosenKdf
+      kdf: resolvedKdf
     );
+
     final verifierKey = _deriveVerificationKey(privateKey: privateKey,
       generator: generatorBigInt, safePrime: safePrimeBigInt);
     final verifierKeyBytes = verifierKey.toByteList();

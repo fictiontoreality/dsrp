@@ -41,9 +41,18 @@ enum HashFunctionChoice {
 }
 
 final _hashChoiceToAlgorithm = <HashFunctionChoice, HashFunction>{
-  HashFunctionChoice.sha1: CryptographyLibHashFunction(hashAlgorithm: Sha1()),
-  HashFunctionChoice.sha256: CryptographyLibHashFunction(hashAlgorithm: Sha256()),
-  HashFunctionChoice.sha512: CryptographyLibHashFunction(hashAlgorithm: Sha512()),
+  HashFunctionChoice.sha1: CryptographyLibHashFunction(
+    name: HashFunctionChoice.sha1.name,
+    hashAlgorithm: Sha1(),
+  ),
+  HashFunctionChoice.sha256: CryptographyLibHashFunction(
+    name: HashFunctionChoice.sha256.name,
+    hashAlgorithm: Sha256(),
+  ),
+  HashFunctionChoice.sha512: CryptographyLibHashFunction(
+    name: HashFunctionChoice.sha512.name,
+    hashAlgorithm: Sha512()
+  ),
 };
 
 /// Returns a [HashFunction] implementation for the given [choice].
@@ -66,6 +75,12 @@ HashFunction getHashFunction(final HashFunctionChoice choice) {
 /// Used throughout SRP for hashing operations including key derivation,
 /// session key generation, and verifier calculation.
 abstract class HashFunction {
+  /// Name of the hash function algorithm.
+  ///
+  /// Useful for uniquely identifying the hash function algorithm for purposes
+  /// such as serialization and debugging.
+  String get name;
+  
   /// Computes hash of input bytes.
   ///
   /// [input] should be the data to hash as a Uint8List.
@@ -78,9 +93,14 @@ abstract class HashFunction {
 /// Provides a HashFunction interface for standard hash algorithms from the
 /// cryptography package (SHA1, SHA256, SHA512, etc.).
 class CryptographyLibHashFunction implements HashFunction {
+  @override
+  final String name;
   final HashAlgorithm hashAlgorithm;
 
-  CryptographyLibHashFunction({required this.hashAlgorithm});
+  CryptographyLibHashFunction({
+      required this.name,
+      required this.hashAlgorithm,
+  });
 
   @override
   Future<Uint8List> hash(Uint8List input) async {

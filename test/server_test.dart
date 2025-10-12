@@ -3,7 +3,8 @@ import 'dart:typed_data';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
-import 'constants.dart';
+import './test/classes.dart' show TestHashFunction;
+import './test/constants.dart';
 
 // Python SRP library used for testing: https://github.com/cocagne/pysrp
 void main() {
@@ -53,7 +54,7 @@ void main() {
         expect(challenge.generator, generator);
         expect(challenge.safePrime, safePrime);
         expect(challenge.verifierKeySalt, salt);
-        expect(challenge.hashFunction, hashFunctionChoice);
+        expect(challenge.hashFunctionName, hashFunctionChoice.name);
       });
 
       test('generated server public key matches pysrp', () async {
@@ -184,7 +185,8 @@ void main() {
       expect(json['safePrime'], isA<String>());
       expect(json['ephemeralServerPublicKey'], isA<String>());
       expect(json['verifierKeySalt'], isA<String>());
-      expect(json['hashFunction'], isA<String>());
+      expect(json['hashFunctionName'], isA<String>());
+      expect(json['isCustomHashFunction'], isA<bool>());
     });
 
     test('fromJson() reconstructs object correctly', () {
@@ -195,7 +197,7 @@ void main() {
       expect(reconstructed.safePrime, equals(challenge.safePrime));
       expect(reconstructed.ephemeralServerPublicKey, equals(challenge.ephemeralServerPublicKey));
       expect(reconstructed.verifierKeySalt, equals(challenge.verifierKeySalt));
-      expect(reconstructed.hashFunction, equals(challenge.hashFunction));
+      expect(reconstructed.hashFunctionName, equals(challenge.hashFunctionName));
     });
 
     test('round-trip through jsonEncode/jsonDecode works correctly', () {
@@ -210,7 +212,7 @@ void main() {
       expect(reconstructed.safePrime, challenge.safePrime);
       expect(reconstructed.ephemeralServerPublicKey, challenge.ephemeralServerPublicKey);
       expect(reconstructed.verifierKeySalt, challenge.verifierKeySalt);
-      expect(reconstructed.hashFunction, challenge.hashFunction);
+      expect(reconstructed.hashFunctionName, challenge.hashFunctionName);
     });
 
     test('JSON contains base64-encoded binary data', () {
@@ -243,16 +245,16 @@ void main() {
       final json = challenge.toJson();
 
       // Verify enum is stored as string
-      expect(json['hashFunction'], challenge.hashFunction.name);
+      expect(json['hashFunctionName'], challenge.hashFunctionName);
 
       // Verify it can be reconstructed
-      expect(HashFunctionChoice.values.byName(json['hashFunction'] as String),
-             challenge.hashFunction);
+      expect(HashFunctionChoice.values.byName(json['hashFunctionName'] as String),
+             hashFunctionChoice);
     });
 
     test('handles large BigInt values correctly', () {
       // Create a challenge with default (very large) safe prime
-      final largeChallenge = Challenge(
+      final largeChallenge = Challenge.fromServer(
         generator: BigInt.two,
         safePrime: BigInt.parse(
           'EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C'
@@ -262,7 +264,7 @@ void main() {
           'FD5138FE8376435B9FC61D2FC0EB06E3', radix: 16),
         ephemeralServerPublicKey: Uint8List.fromList([1, 2, 3]),
         verifierKeySalt: Uint8List.fromList([4, 5, 6]),
-        hashFunction: HashFunctionChoice.sha256,
+        hashFunctionChoice: HashFunctionChoice.sha256,
       );
 
       final jsonString = jsonEncode(largeChallenge.toJson());
@@ -275,19 +277,114 @@ void main() {
 
     test('handles all HashFunctionChoice values', () {
       for (final hashFunc in HashFunctionChoice.values) {
-        final testChallenge = Challenge(
+        final testChallenge = Challenge.fromServer(
           generator: generator,
           safePrime: safePrime,
           ephemeralServerPublicKey: challenge.ephemeralServerPublicKey,
           verifierKeySalt: challenge.verifierKeySalt,
-          hashFunction: hashFunc,
+          hashFunctionChoice: hashFunc,
         );
 
         final json = testChallenge.toJson();
         final reconstructed = Challenge.fromJson(json);
 
-        expect(reconstructed.hashFunction, hashFunc);
+        expect(reconstructed.hashFunctionName, hashFunc.name);
       }
+    });
+  });
+
+  group('Custom HashFunction tests', () {
+    // Create a simple custom hash function for testing
+    final customHash = TestHashFunction(name: 'test-sha256');
+
+    test('Server accepts custom hash function', () {
+      final server = Server(
+        userId: username,
+        salt: salt,
+        verifierKey: verifierKey,
+        generator: generator,
+        safePrime: safePrime,
+        customHashFunction: customHash,
+      );
+
+      expect(server.hashFunctionChoice, isNull);
+    });
+
+    test('Server throws when both hashFunction and customHashFunction provided', () {
+      expect(
+        () => Server(
+          userId: username,
+          salt: salt,
+          verifierKey: verifierKey,
+          customHashFunction: customHash,
+          hashFunction: HashFunctionChoice.sha256,
+        ),
+        throwsA(isA<InvalidParameterException>()),
+      );
+    });
+
+    test('Challenge created with custom hash function stores name correctly', () async {
+      final server = Server(
+        userId: username,
+        salt: salt,
+        verifierKey: verifierKey,
+        generator: generator,
+        safePrime: safePrime,
+        customHashFunction: customHash,
+      );
+
+      final challenge = await server.createChallenge();
+
+      expect(challenge.hashFunctionName, 'test-sha256');
+      expect(challenge.isCustomHashFunction, true);
+    });
+
+    test('Challenge with custom hash function serializes correctly', () async {
+      final server = Server(
+        userId: username,
+        salt: salt,
+        verifierKey: verifierKey,
+        generator: generator,
+        safePrime: safePrime,
+        customHashFunction: customHash,
+      );
+
+      final challenge = await server.createChallenge();
+      final json = challenge.toJson();
+
+      expect(json['hashFunctionName'], 'test-sha256');
+      expect(json['isCustomHashFunction'], true);
+
+      // Should be able to reconstruct from JSON
+      final reconstructed = Challenge.fromJson(json);
+      expect(reconstructed.hashFunctionName, 'test-sha256');
+      expect(reconstructed.isCustomHashFunction, true);
+    });
+
+    test('Server with custom hash function can complete authentication flow', () async {
+      final customServer = Server(
+        userId: username,
+        salt: salt,
+        verifierKey: verifierKey,
+        generator: generator,
+        safePrime: safePrime,
+        customHashFunction: customHash,
+      );
+
+      final serverPrivateKey = Uint8List.fromList([249, 172, 205, 98, 151, 175, 247, 226, 73, 122, 213, 193, 100, 74, 31, 109, 129, 146, 171, 18, 219, 111, 139, 9, 43, 164, 171, 1, 17, 251, 155, 217]);
+      final userPublicKey = Uint8List.fromList([29, 113, 4, 60, 247, 47, 198, 246, 163, 32, 118, 226, 28, 13, 19, 229, 222, 253, 239, 86, 212, 251, 233, 233, 51, 204, 128, 73, 79, 249, 74, 249, 67, 146, 129, 247, 138, 26, 215, 37, 149, 5, 31, 174, 111, 111, 247, 182, 198, 246, 30, 215, 103, 100, 184, 188, 97, 197, 217, 193, 37, 158, 126, 188, 163, 74, 78, 110, 139, 10, 1, 206, 130, 233, 247, 169, 10, 183, 35, 60, 205, 167, 122, 124, 53, 99, 125, 24, 11, 16, 107, 18, 69, 135, 79, 9, 180, 7, 98, 27, 40, 225, 210, 216, 164, 162, 120, 175, 43, 244, 75, 138, 187, 116, 118, 112, 181, 21, 99, 121, 101, 244, 28, 125, 179, 50, 175, 120]);
+
+      await customServer.createChallenge(
+        ephemeralServerPrivateKeyBytes: serverPrivateKey,
+      );
+
+      // Should be able to derive session key
+      final sessionKey = await customServer.deriveSessionKey(
+        ephemeralUserPublicKey: userPublicKey,
+      );
+
+      expect(sessionKey, isNotNull);
+      expect(sessionKey.length, 32); // SHA-256 produces 32 bytes
     });
   });
 }

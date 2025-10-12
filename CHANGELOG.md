@@ -1,7 +1,8 @@
 ## 0.5.0
 
-Initial beta release. Has been tested in production with pysrp interop for
-several years, but could use wider testing before a 1.0 release.
+Initial beta release. Has been tested in production with pysrp server interop
+for several years, but could use wider testing before a 1.0 release, especially
+from those using Dart server-side.
 
 ### Features
 - Pure Dart SRP-6a protocol implementation

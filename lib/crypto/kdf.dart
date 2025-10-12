@@ -69,6 +69,7 @@ enum KdfChoice {
 
 final _kdfChoiceToAlgorithm = <KdfChoice, Kdf>{
   KdfChoice.argon2id: Argon2idKdf(
+    name: KdfChoice.argon2id.name,
     argon2: Argon2id(
       parallelism: 4,
       memory: 65536, // 64 MB
@@ -76,9 +77,18 @@ final _kdfChoiceToAlgorithm = <KdfChoice, Kdf>{
       hashLength: 32,
     ),
   ),
-  KdfChoice.sha1: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha1())),
-  KdfChoice.sha256: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha256())),
-  KdfChoice.sha512: HashKdf(hashFunction: CryptographyLibHashFunction(hashAlgorithm: Sha512())),
+  KdfChoice.sha1: HashKdf(
+    name: KdfChoice.sha1.name,
+    hashFunction: getHashFunction(HashFunctionChoice.sha1),
+  ),
+  KdfChoice.sha256: HashKdf(
+    name: KdfChoice.sha256.name,
+    hashFunction: getHashFunction(HashFunctionChoice.sha256),
+  ),
+  KdfChoice.sha512: HashKdf(
+    name: KdfChoice.sha512.name,
+    hashFunction: getHashFunction(HashFunctionChoice.sha512),
+  ),
 };
 
 /// Returns a [Kdf] implementation for the given [choice].
@@ -102,6 +112,12 @@ Kdf getKdf(final KdfChoice choice) {
 /// likelihood of brute force attacks succeeding in extracting the
 /// password.
 abstract class Kdf {
+  /// Name of the KDF algorithm.
+  ///
+  /// Useful for uniquely identifying the KDF algorithm for purposes such as
+  /// serialization and debugging.
+  String get name;
+  
   /// Derives a key from password bytes and salt.
   ///
   /// [passwordBytes] should be UTF-8 encoded password bytes.
@@ -129,9 +145,11 @@ abstract class Kdf {
 /// deliberately slower) KDF should be used in production, such as Argon2id,
 /// scrypt, or high-iteration PBKDF2.
 class HashKdf implements Kdf {
+  @override
+  final String name;
   final HashFunction hashFunction;
 
-  HashKdf({required this.hashFunction});
+  HashKdf({required this.name, required this.hashFunction});
 
   @override
   Future<SecretKey> deriveKeyFromPasswordBytes({
@@ -160,9 +178,11 @@ class HashKdf implements Kdf {
 ///
 /// Provides a secure, memory-hard KDF suitable for production use.
 class Argon2idKdf implements Kdf {
+  @override
+  final String name;
   final Argon2id argon2;
 
-  Argon2idKdf({required this.argon2});
+  Argon2idKdf({required this.name, required this.argon2});
 
   @override
   Future<SecretKey> deriveKeyFromPasswordBytes({

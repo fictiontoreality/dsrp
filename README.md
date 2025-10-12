@@ -4,6 +4,17 @@ A pure Dart implementation of the [Secure Remote Password (SRP-6a)](https://en.w
 
 SRP allows password-based authentication without transmitting password-equivalent information to the server, protecting against man-in-the-middle attacks and server database breaches.
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Advanced Usage](#advanced-usage)
+- [Security Best Practices](#security-best-practices)
+- [Additional Resources](#additional-resources)
+- [Contributions](#contributions)
+- [License](#license)
+
 ## Features
 
 * **Zero-knowledge password proof** - Server never receives password or password-equivalent data.
@@ -11,7 +22,7 @@ SRP allows password-based authentication without transmitting password-equivalen
 * **Mutual authentication** - Both client and server verify each other's identity.
 * **Secure session keys** - Generates shared symmetric keys for encrypted communication to optionally supplement other encryption layers such as TLS.
 * **RFC5054 compliant** - compatible with SRP-6a, the most widely adopted standard for SRP.
-* **Customizable cryptography** - Support for multiple hash algorithms (SHA256, SHA512, SHA1) and KDFs (Argon2id, PBKDF2).
+* **Customizable cryptography** - Built-in support for multiple hash functions (SHA256, SHA512, SHA1) and KDFs (Argon2id, PBKDF2), or bring your own custom functions tailored to your use case.
 * **Custom safe primes** - Generate your own primes to reduce vulnerability to pre-computed attacks.
 * **Memory security** - Uses `Uint8List` for passwords with secure erasure via `overwriteWithZeros()`.
 * **Python interoperability** - Fully compatible with [pysrp](https://github.com/cocagne/pysrp) library.
@@ -97,11 +108,89 @@ final serverSessionKey = server.sessionKey;
 
 **Note**: Session keys supplement but do not replace TLS encryption. Always use TLS for transport security.
 
-A complete working example is in [examples/srp.dart](examples/srp.dart): 
+A complete working example is in [examples/srp.dart](examples/srp.dart):
 
 ```
 dart examples/srp.dart
 ```
+
+## Advanced Usage
+
+### Custom Hash Functions and KDFs
+
+If the built-in hash functions or KDFs do not meet your needs, you can provide your own by implementing the `HashFunction` and `Kdf` interfaces:
+
+```dart
+import 'dart:typed_data';
+import 'package:dsrp/dsrp.dart';
+import 'package:dsrp/crypto/hash.dart';
+import 'package:dsrp/crypto/kdf.dart';
+
+// Custom hash function example
+class CustomBlake3Hash implements HashFunction {
+  @override
+  String get name => 'blake3';
+
+  @override
+  Future<Uint8List> hash(Uint8List input) async {
+    // Your custom hash implementation.
+    // ...
+  }
+}
+
+// Custom KDF example
+class CustomScryptKdf implements Kdf {
+  @override
+  String get name => 'scrypt';
+
+  @override
+  Future<SecretKey> deriveKeyFromPasswordBytes({
+    required Uint8List passwordBytes,
+    required Uint8List salt,
+    Uint8List? userIdBytes,
+  }) async {
+    // Your custom KDF implementation.
+    // ...
+  }
+}
+
+// Usage with custom implementations.
+
+// Registration with custom KDF.
+final customKdf = CustomScryptKdf();
+final saltedKey = await User.createSaltedVerificationKeyFromBytes(
+  userIdBytes: 'alice'.utf8Bytes,
+  passwordBytes: passwordBytes,
+  customKdf: customKdf,  // Use custom KDF instead of built-in
+);
+
+// Authentication with custom hash function.
+final customHash = CustomBlake3Hash();
+
+// Server creates challenge with custom hash
+final server = Server(
+  userId: 'alice',
+  salt: saltedKey.salt,
+  verifierKey: saltedKey.key,
+  customHashFunction: customHash,  // Use custom hash instead of built-in
+);
+final challenge = await server.createChallenge();
+
+// User processes challenge with matching custom hash and KDF
+final user = await User.fromUserCredsBytesAndChallenge(
+  userIdBytes: 'alice'.utf8Bytes,
+  passwordBytes: passwordBytes,
+  challenge: challenge,
+  customHashFunction: customHash,  // Must match server's hash function
+  customKdf: customKdf,
+);
+```
+
+**Important:**
+- The `name` property must uniquely identify your implementation.
+- Hash functions must match between client and server.
+- KDFs must match between registration and authentication.
+- Custom implementations allow integration with specialized cryptographic libraries or hardware security modules.
 
 ## Security Best Practices
 

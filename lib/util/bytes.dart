@@ -50,8 +50,21 @@ Uint8List convertBigIntToByteList(BigInt number) {
   return result;
 }
 
-/// Generate bytes with a cryptographically secure pseudorandom number
-/// generator (CSPRNG).
+/// Generates random bytes using a cryptographically secure PRNG.
+///
+/// Uses Dart's `Random.secure()` which provides a cryptographically secure
+/// pseudorandom number generator suitable for generating keys, salts, and
+/// other security-sensitive random data.
+///
+/// **Parameters:**
+/// - [bytesCount]: Number of random bytes to generate
+///
+/// **Returns:** Uint8List containing cryptographically secure random bytes
+///
+/// **Example:**
+/// ```dart
+/// final salt = generateRandomBytes(32); // 256-bit random salt
+/// ```
 Uint8List generateRandomBytes(int bytesCount) {
   final random = Random.secure();
   final result = Uint8List(bytesCount);
@@ -61,13 +74,38 @@ Uint8List generateRandomBytes(int bytesCount) {
   return result;
 }
 
+/// Extension to convert [BigInt] values to byte arrays.
+///
+/// Provides convenient conversion from BigInt to Uint8List for use in
+/// cryptographic operations where large integers need to be transmitted
+/// or hashed.
 extension BigIntToByteList on BigInt {
+  /// Converts this BigInt to a big-endian byte array.
+  ///
+  /// **Returns:** Uint8List representation of the BigInt in big-endian format
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final bytes = safePrime.toByteList();
+  /// ```
   Uint8List toByteList() {
     return convertBigIntToByteList(this);
   }
 }
 
+/// Extension to convert byte arrays to [BigInt] values.
+///
+/// Provides convenient conversion from byte arrays to BigInt for use in
+/// cryptographic operations involving large integers.
 extension ByteListToBigInt on List<int> {
+  /// Converts this byte array to a BigInt (big-endian interpretation).
+  ///
+  /// **Returns:** BigInt representation of the byte array
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final verifierKey = verifierKeyBytes.toBigInt();
+  /// ```
   BigInt toBigInt() {
     return convertByteListToBigInt(this);
   }

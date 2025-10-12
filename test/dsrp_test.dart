@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
-import 'constants.dart';
+import './test/constants.dart';
 
 void main() {
   authenticate(Uint8List verifierKey, Uint8List salt, {BigInt? safePrime}) async {
@@ -225,12 +225,12 @@ void main() {
               final salt = Uint8List.fromList([1, 2, 3, 4]);
 
               // Create a challenge with invalid server public key.
-              final challenge = Challenge(
+              final challenge = Challenge.fromServer(
                 generator: generator,
                 safePrime: safePrime,
                 ephemeralServerPublicKey: safePrime.toByteList(), // B = N (0 mod N)
                 verifierKeySalt: salt,
-                hashFunction: hashFunctionChoice,
+                hashFunctionChoice: hashFunctionChoice,
               );
 
               // Attack: User tries to process challenge with invalid B.

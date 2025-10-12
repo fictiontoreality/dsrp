@@ -1,7 +1,7 @@
 import 'dart:convert' show base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashFunctionChoice, defaultSafePrime, deriveOptimalByteLengthForEphemeralKeys;
-import 'package:dsrp/exceptions.dart' show AuthenticationFailure;
+import 'package:dsrp/exceptions.dart' show AuthenticationFailure, InvalidParameterException;
 import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/rfc5054.dart';
 import 'package:dsrp/util/bytes.dart';
@@ -16,24 +16,45 @@ final _log = Logger('dsrp.Server');
 /// This provides the user the minimum data needed from the server to generate
 /// the session key and its verifier.
 ///
-/// WARNING: If the server provides the core SRP parameters (safe prime,
+/// **Note:** Custom hash functions must be passed in along with this
+/// challenge to [User.fromUserCredsAndChallenge]. Otherwise a runtime
+/// exception may occur, or if there is a built-in hash function with the same
+/// name it may be used instead of the custom hash function.
+///
+/// **WARNING:** If the server provides the core SRP parameters (safe prime,
 /// generator, hash algorithm) it is highly recommended for the client to verify
 /// they are cryptographically secure. This could include checking the hash
-/// algorithm is one of those expected, and that the safe prime, generator and
+/// algorithm is one of those permitted, and that the safe prime, generator and
 /// salt are secure (see [verifySafePrime], [verifyGenerator], [verifySalt]).
 class Challenge {
   final BigInt generator;
   final BigInt safePrime;
   final Uint8List ephemeralServerPublicKey;
   final Uint8List verifierKeySalt;
-  final HashFunctionChoice hashFunction;
+  final String hashFunctionName;
+  final bool isCustomHashFunction;
 
-  Challenge({
+  Challenge.fromServer({
       required this.generator,
       required this.safePrime,
       required this.ephemeralServerPublicKey,
       required this.verifierKeySalt,
-      required this.hashFunction
+      HashFunctionChoice? hashFunctionChoice,
+      HashFunction? customHashFunction,
+  }): hashFunctionName = customHashFunction?.name ?? hashFunctionChoice?.name ?? '',
+      isCustomHashFunction = customHashFunction != null {
+    if (hashFunctionChoice == null && customHashFunction == null) {
+      throw InvalidParameterException('Either a hash function choice or custom hash function must be provided.');
+    }
+  }
+
+  Challenge._({
+      required this.generator,
+      required this.safePrime,
+      required this.ephemeralServerPublicKey,
+      required this.verifierKeySalt,
+      required this.hashFunctionName,
+      required this.isCustomHashFunction,
   });
 
   /// Converts this object to a JSON-serializable map.
@@ -51,7 +72,8 @@ class Challenge {
     'safePrime': safePrime.toString(),
     'ephemeralServerPublicKey': base64.encode(ephemeralServerPublicKey),
     'verifierKeySalt': base64.encode(verifierKeySalt),
-    'hashFunction': hashFunction.name,
+    'hashFunctionName': hashFunctionName,
+    'isCustomHashFunction': isCustomHashFunction,
   };
 
   /// Creates a [Challenge] from a JSON map.
@@ -65,12 +87,13 @@ class Challenge {
   /// final challenge = Challenge.fromJson(decoded);
   /// ```
   static Challenge fromJson(Map<String, dynamic> json) {
-    return Challenge(
+    return Challenge._(
       generator: BigInt.parse(json['generator'] as String),
       safePrime: BigInt.parse(json['safePrime'] as String),
       ephemeralServerPublicKey: base64.decode(json['ephemeralServerPublicKey'] as String),
       verifierKeySalt: base64.decode(json['verifierKeySalt'] as String),
-      hashFunction: HashFunctionChoice.values.byName(json['hashFunction'] as String),
+      hashFunctionName: json['hashFunctionName'],
+      isCustomHashFunction: json['isCustomHashFunction'],
     );
   }
 
@@ -98,12 +121,13 @@ class Server {
   /// A generator modulo N.
   /// Typically denoted 'g'.
   final BigInt generator;
+  /// Hash algorithm choice used during SRP key and verifier calculations (e.g., SHA256).
+  /// Null if using a custom hash function.
+  late final HashFunctionChoice? hashFunctionChoice;
   /// Hash algorithm used during SRP key and verifier calculations (e.g., SHA256).
-  final HashFunctionChoice hashFunctionChoice;
-  /// Hash algorithm used during SRP key and verifier calculations (e.g., SHA256).
-  final HashFunction _hashFunction;
+  late final HashFunction _hashFunction;
   /// A large, safe prime.
-  /// 
+  ///
   /// Typically denoted 'N'.
   /// By definition a safe prime N = 2q + 1, where q is a Sophie Germain prime.
   /// All arithmetic is performed in the field of integers modulo N.
@@ -134,20 +158,33 @@ class Server {
   Uint8List? get sessionKey => _sessionKey != null ? Uint8List.fromList(_sessionKey!) : null;
 
   Server({
-      required String userId,
-      required Uint8List salt,
-      required Uint8List verifierKey,
-      BigInt? generator,
-      BigInt? safePrime,
-      HashFunctionChoice? hashFunction,
+      required final String userId,
+      required final Uint8List salt,
+      required final Uint8List verifierKey,
+      final BigInt? generator,
+      final BigInt? safePrime,
+      final HashFunctionChoice? hashFunction,
+      final HashFunction? customHashFunction,
   }) : _userId = userId,
        _salt = Uint8List.fromList(salt),
        _verifierKey = verifierKey.toBigInt(),
        generator = generator ?? defaultGenerator,
        safePrime = safePrime ?? defaultSafePrime,
-       _safePrimeBytes = safePrime?.toByteList() ?? defaultSafePrime.toByteList(),
-       hashFunctionChoice = hashFunction ?? defaultHashFunctionChoice,
-       _hashFunction = getHashFunction(hashFunction ?? defaultHashFunctionChoice) {
+       _safePrimeBytes = safePrime?.toByteList() ?? defaultSafePrime.toByteList() {
+    // TODO: Move to _resolveHashFunction?
+    if (hashFunction != null && customHashFunction != null) {
+      throw InvalidParameterException(
+        'Cannot provide both hashFunction and customHashFunction. Please provide only one.'
+      );
+    }
+    if (customHashFunction != null) {
+      hashFunctionChoice = null;
+      _hashFunction = customHashFunction;
+    } else {
+      hashFunctionChoice = hashFunction ?? defaultHashFunctionChoice;
+      _hashFunction = getHashFunction(hashFunctionChoice!);
+    }
+    
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
     }
@@ -181,12 +218,14 @@ class Server {
     // B = kv + g^b
     final ephemeralServerPublicKeyInt = (multiplierParameter * _verifierKey + generator.modPow(_ephemeralServerPrivateKey!, safePrime)) % safePrime;
     _ephemeralServerPublicKey = ephemeralServerPublicKeyInt.toByteList();
-    return Challenge(
+    final customHashFunction = hashFunctionChoice != null ? null : _hashFunction;
+    return Challenge.fromServer(
       generator: generator,
       safePrime: safePrime,
       ephemeralServerPublicKey: Uint8List.fromList(_ephemeralServerPublicKey!),
       verifierKeySalt: Uint8List.fromList(_salt),
-      hashFunction: hashFunctionChoice
+      hashFunctionChoice: hashFunctionChoice,
+      customHashFunction: customHashFunction,
     );
   }
 

@@ -1,3 +1,6 @@
+/// Test constants shared across unit / integration tests.
+library;
+
 import 'package:dsrp/dsrp.dart';
 
 const password = 'cow';

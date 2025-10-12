@@ -4,7 +4,8 @@ import 'package:dsrp/defaults.dart';
 import 'package:dsrp/dsrp.dart';
 import 'package:test/test.dart';
 
-import 'constants.dart';
+import './test/classes.dart' show TestHashFunction, TestKdf;
+import './test/constants.dart';
 
 // Python SRP library used for testing: https://github.com/cocagne/pysrp
 void main() {
@@ -85,10 +86,10 @@ void main() {
       final userPrivateKey = Uint8List.fromList([232, 70, 157, 38, 48, 237, 179, 190, 222, 91, 132, 27, 167, 190, 150, 98, 47, 119, 182, 249, 138, 180, 194, 124, 66, 153, 178, 125, 47, 149, 55, 73]);
       final serverPublicKey = Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242, 204, 44, 60, 7, 136, 100, 251, 46, 140, 252, 127, 151, 252, 16, 29, 255, 246, 21, 160, 46, 124, 121, 153, 62, 73, 241, 233, 170, 173, 83, 15, 25, 245, 199, 107, 205, 73, 179, 55, 94, 238, 125, 99, 166, 95, 96, 178, 124, 155, 158, 137, 76, 225, 82, 97, 61, 235, 223, 232, 138, 218, 8, 109, 72, 165, 152, 87, 7, 48, 95, 52, 96, 73, 11, 65, 33, 181, 67, 197, 237, 4, 166, 56, 9, 140, 229, 191, 220, 134, 98, 44, 133, 87, 119, 57, 233, 229, 210, 96, 45, 217, 59, 192, 162, 229, 200, 32, 210, 5, 88, 76, 193, 104, 158, 238, 56, 142, 191, 86, 61]);
 
-      final challenge = Challenge(
+      final challenge = Challenge.fromServer(
         generator: generator, safePrime: safePrime,
         ephemeralServerPublicKey: serverPublicKey, verifierKeySalt: salt,
-        hashFunction: hashFunctionChoice);
+        hashFunctionChoice: hashFunctionChoice);
 
       late User user;
 
@@ -255,12 +256,12 @@ void main() {
     late UserSessionVerifiers verifiers;
 
     setUp(() async {
-      final challenge = Challenge(
+      final challenge = Challenge.fromServer(
         generator: generator,
         safePrime: safePrime,
         ephemeralServerPublicKey: Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242]),
         verifierKeySalt: salt,
-        hashFunction: hashFunctionChoice,
+        hashFunctionChoice: hashFunctionChoice,
       );
 
       final user = await User.fromUserCredsAndChallenge(
@@ -324,6 +325,175 @@ void main() {
       // userId should be a plain string, not base64
       expect(json['userId'], equals(username));
       expect(json['userId'], equals(verifiers.userId));
+    });
+  });
+
+  group('Custom Kdf tests', () {
+    // Create a simple custom KDF for testing
+    final customKdf = TestKdf(name: 'test-argon2id');
+
+    test('createSaltedVerificationKey accepts custom Kdf', () async {
+      final saltedKey = await User.createSaltedVerificationKeyFromBytes(
+        passwordBytes: password.utf8Bytes,
+        userIdBytes: username.utf8Bytes,
+        generator: generator,
+        safePrime: safePrime,
+        customKdf: customKdf,
+        salt: salt,
+      );
+
+      expect(saltedKey.key, isNotNull);
+      expect(saltedKey.salt, salt);
+    });
+
+    test('createSaltedVerificationKey throws when both kdf and customKdf provided', () {
+      expect(
+        () => User.createSaltedVerificationKeyFromBytes(
+          passwordBytes: password.utf8Bytes,
+          customKdf: customKdf,
+          kdf: KdfChoice.argon2id,
+          salt: salt,
+        ),
+        throwsA(isA<InvalidParameterException>()),
+      );
+    });
+
+    test('fromUserCredsBytesAndChallenge accepts custom Kdf', () async {
+      final serverPublicKey = Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242, 204, 44, 60, 7, 136, 100, 251, 46, 140, 252, 127, 151, 252, 16, 29, 255, 246, 21, 160, 46, 124, 121, 153, 62, 73, 241, 233, 170, 173, 83, 15, 25, 245, 199, 107, 205, 73, 179, 55, 94, 238, 125, 99, 166, 95, 96, 178, 124, 155, 158, 137, 76, 225, 82, 97, 61, 235, 223, 232, 138, 218, 8, 109, 72, 165, 152, 87, 7, 48, 95, 52, 96, 73, 11, 65, 33, 181, 67, 197, 237, 4, 166, 56, 9, 140, 229, 191, 220, 134, 98, 44, 133, 87, 119, 57, 233, 229, 210, 96, 45, 217, 59, 192, 162, 229, 200, 32, 210, 5, 88, 76, 193, 104, 158, 238, 56, 142, 191, 86, 61]);
+
+      final challenge = Challenge.fromServer(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: serverPublicKey,
+        verifierKeySalt: salt,
+        hashFunctionChoice: hashFunctionChoice,
+      );
+
+      final user = await User.fromUserCredsBytesAndChallenge(
+        userIdBytes: username.utf8Bytes,
+        passwordBytes: password.utf8Bytes,
+        challenge: challenge,
+        customKdf: customKdf,
+      );
+
+      expect(user.sessionKey, isNotNull);
+    });
+
+    test('fromUserCredsBytesAndChallenge throws when both kdf and customKdf provided', () {
+      final serverPublicKey = Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242]);
+
+      final challenge = Challenge.fromServer(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: serverPublicKey,
+        verifierKeySalt: salt,
+        hashFunctionChoice: hashFunctionChoice,
+      );
+
+      expect(
+        () => User.fromUserCredsBytesAndChallenge(
+          userIdBytes: username.utf8Bytes,
+          passwordBytes: password.utf8Bytes,
+          challenge: challenge,
+          customKdf: customKdf,
+          kdf: KdfChoice.argon2id,
+        ),
+        throwsA(isA<InvalidParameterException>()),
+      );
+    });
+
+    test('User with custom Kdf can complete authentication flow', () async {
+      final userPrivateKey = Uint8List.fromList([232, 70, 157, 38, 48, 237, 179, 190, 222, 91, 132, 27, 167, 190, 150, 98, 47, 119, 182, 249, 138, 180, 194, 124, 66, 153, 178, 125, 47, 149, 55, 73]);
+      final serverPublicKey = Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242, 204, 44, 60, 7, 136, 100, 251, 46, 140, 252, 127, 151, 252, 16, 29, 255, 246, 21, 160, 46, 124, 121, 153, 62, 73, 241, 233, 170, 173, 83, 15, 25, 245, 199, 107, 205, 73, 179, 55, 94, 238, 125, 99, 166, 95, 96, 178, 124, 155, 158, 137, 76, 225, 82, 97, 61, 235, 223, 232, 138, 218, 8, 109, 72, 165, 152, 87, 7, 48, 95, 52, 96, 73, 11, 65, 33, 181, 67, 197, 237, 4, 166, 56, 9, 140, 229, 191, 220, 134, 98, 44, 133, 87, 119, 57, 233, 229, 210, 96, 45, 217, 59, 192, 162, 229, 200, 32, 210, 5, 88, 76, 193, 104, 158, 238, 56, 142, 191, 86, 61]);
+
+      final challenge = Challenge.fromServer(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: serverPublicKey,
+        verifierKeySalt: salt,
+        hashFunctionChoice: hashFunctionChoice,
+      );
+
+      final user = await User.fromUserCredsBytesAndChallenge(
+        userIdBytes: username.utf8Bytes,
+        passwordBytes: password.utf8Bytes,
+        challenge: challenge,
+        customKdf: customKdf,
+        ephemeralUserPrivateKey: userPrivateKey,
+      );
+
+      final verifiers = user.getUserSessionVerifiers();
+
+      expect(verifiers.ephemeralUserPublicKey, isNotNull);
+      expect(verifiers.sessionKeyVerifier, isNotNull);
+      expect(user.sessionKey, isNotNull);
+    });
+  });
+
+  group('Custom HashFunction in User tests', () {
+    final customHash = TestHashFunction(name: 'test-sha256');
+    // Test ephemeral server public key (doesn't need to be valid for these tests).
+    final testServerPublicKey = Uint8List.fromList([48, 253, 127, 208, 252, 27, 19, 242]);
+
+    test('User accepts custom hash function from Challenge', () async {
+      final challenge = Challenge.fromServer(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: testServerPublicKey,
+        verifierKeySalt: salt,
+        customHashFunction: customHash,
+      );
+
+      final user = await User.fromUserCredsBytesAndChallenge(
+        userIdBytes: username.utf8Bytes,
+        passwordBytes: password.utf8Bytes,
+        challenge: challenge,
+        customHashFunction: customHash,
+      );
+
+      expect(user.sessionKey, isNotNull);
+    });
+
+    test('User throws when server requires custom hash but none provided', () async {
+      final challenge = Challenge.fromServer(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: testServerPublicKey,
+        verifierKeySalt: salt,
+        customHashFunction: customHash,
+      );
+
+      expect(
+        () => User.fromUserCredsBytesAndChallenge(
+          userIdBytes: username.utf8Bytes,
+          passwordBytes: password.utf8Bytes,
+          challenge: challenge,
+          // No customHashFunction provided
+        ),
+        throwsA(isA<InvalidParameterException>()),
+      );
+    });
+
+    test('User throws when custom hash function name mismatch', () async {
+      final challenge = Challenge.fromServer(
+        generator: generator,
+        safePrime: safePrime,
+        ephemeralServerPublicKey: testServerPublicKey,
+        verifierKeySalt: salt,
+        customHashFunction: customHash,
+      );
+
+      final wrongHash = TestHashFunction(name: 'wrong-hash');
+
+      expect(
+        () => User.fromUserCredsBytesAndChallenge(
+          userIdBytes: username.utf8Bytes,
+          passwordBytes: password.utf8Bytes,
+          challenge: challenge,
+          customHashFunction: wrongHash,
+        ),
+        throwsA(isA<InvalidParameterException>()),
+      );
     });
   });
 }
