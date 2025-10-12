@@ -1,5 +1,8 @@
 # dsrp
 
+[![pub package](https://img.shields.io/pub/v/dsrp.svg)](https://pub.dev/packages/dsrp)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/LICENSE)
+
 A pure Dart implementation of the [Secure Remote Password (SRP-6a)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol) protocol for secure user authentication.
 
 SRP allows password-based authentication without transmitting password-equivalent information to the server, protecting against man-in-the-middle attacks and server database breaches.
