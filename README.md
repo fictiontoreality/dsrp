@@ -14,6 +14,7 @@ SRP allows password-based authentication without transmitting password-equivalen
 - [Usage](#usage)
 - [Advanced Usage](#advanced-usage)
 - [Security Best Practices](#security-best-practices)
+- [Performance and Profiling](#performance-and-profiling)
 - [Additional Resources](#additional-resources)
 - [Contributions](#contributions)
 - [License](#license)
@@ -252,6 +253,13 @@ final saltedKey = await User.createSaltedVerificationKey(
 - Private keys
 - User IDs (if privacy-sensitive)
 
+See [SECURITY.md](SECURITY.md) for more security tips.
+
+## Performance and Profiling
+
+See [PROFILING.md](PROFILING.md) for a performance profiling and optimization
+guide, including how to optimize Argon2id parameters via benchmarking.
+
 ## Additional Resources
 
 - **Examples**: See [examples/srp.dart](examples/srp.dart) for a complete authentication flow
@@ -261,7 +269,8 @@ final saltedKey = await User.createSaltedVerificationKey(
 
 ## Contributions
 
-TODO: See [CONTRIBUTION.md](CONTRIBUTION.md).
+- See [CONTRIBUTION.md](CONTRIBUTION.md) on ways to contribute.
+- See [SECURITY.md](SECURITY.md) for reporting security concerns
 
 ## License
 
