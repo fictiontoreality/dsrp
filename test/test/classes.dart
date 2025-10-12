@@ -2,7 +2,6 @@
 library;
 
 import 'dart:typed_data';
-import 'package:cryptography/cryptography.dart';
 import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/crypto/kdf.dart';
 
@@ -14,7 +13,7 @@ class TestKdf implements Kdf {
   TestKdf({required this.name});
 
   @override
-  Future<SecretKey> deriveKeyFromPasswordBytes({
+  Future<Uint8List> deriveKeyFromPasswordBytes({
       required Uint8List passwordBytes,
       required Uint8List salt,
       Uint8List? userIdBytes,

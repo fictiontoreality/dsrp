@@ -630,8 +630,7 @@ class User {
       salt: salt,
       userIdBytes: userIdBytes,
     );
-    final privateKeyBytes = await privateKey.extractBytes();
-    return privateKeyBytes.toBigInt();
+    return privateKey.toBigInt();
   }
 
   /// Password verifier, a.k.a. verification key.

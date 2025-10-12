@@ -124,7 +124,7 @@ abstract class Kdf {
   /// [salt] is the cryptographic salt.
   /// [userIdBytes] is optional - when provided, will be prepended as
   /// "userId:password" per RFC 5054 specification.
-  Future<SecretKey> deriveKeyFromPasswordBytes({
+  Future<Uint8List> deriveKeyFromPasswordBytes({
     required Uint8List passwordBytes,
     required Uint8List salt,
     Uint8List? userIdBytes,
@@ -152,7 +152,7 @@ class HashKdf implements Kdf {
   HashKdf({required this.name, required this.hashFunction});
 
   @override
-  Future<SecretKey> deriveKeyFromPasswordBytes({
+  Future<Uint8List> deriveKeyFromPasswordBytes({
     required Uint8List passwordBytes,
     required Uint8List salt,
     Uint8List? userIdBytes,
@@ -170,7 +170,7 @@ class HashKdf implements Kdf {
     ]);
     final finalHash = await hashFunction.hash(combined);
 
-    return SecretKey(finalHash);
+    return finalHash;
   }
 }
 
@@ -185,16 +185,18 @@ class Argon2idKdf implements Kdf {
   Argon2idKdf({required this.name, required this.argon2});
 
   @override
-  Future<SecretKey> deriveKeyFromPasswordBytes({
+  Future<Uint8List> deriveKeyFromPasswordBytes({
     required Uint8List passwordBytes,
     required Uint8List salt,
     Uint8List? userIdBytes,
   }) async {
     // I | ':' | p
     final input = concatenateUserIdAndPassword(userIdBytes, passwordBytes);
-    return await argon2.deriveKey(
+    final secretKey = await argon2.deriveKey(
       secretKey: SecretKey(input),
       nonce: salt,
     );
+    final bytes = await secretKey.extractBytes();
+    return Uint8List.fromList(bytes);
   }
 }

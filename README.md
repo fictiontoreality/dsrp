@@ -144,7 +144,7 @@ class CustomScryptKdf implements Kdf {
   String get name => 'scrypt';
 
   @override
-  Future<SecretKey> deriveKeyFromPasswordBytes({
+  Future<Uint8List> deriveKeyFromPasswordBytes({
     required Uint8List passwordBytes,
     required Uint8List salt,
     Uint8List? userIdBytes,
