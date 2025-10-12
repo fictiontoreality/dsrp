@@ -39,19 +39,37 @@ void main() async {
   log.info('✓ Generator is valid');
 
   // 1. User generates a salted verification key based on user ID and password.
-  final userId = "fakeuserid";
-  final password = "fakepassword";
-  final saltedVerificationKey = await User.createSaltedVerificationKey(
-    userId: userId, password: password,
+
+  // SECURITY: Convert strings to bytes early for secure memory handling.
+  final String userId = "fakeuserid";
+  String password = "fakepassword";
+  final userIdBytes = userId.utf8Bytes;
+  final passwordBytes = password.utf8Bytes;
+  // Setting sensitive string variables to null or empty string allows sensitive
+  // string data to be garbage collected. Do the same for userId if it is
+  // sensitive.
+  password = ""; 
+
+  final saltedVerificationKey = await User.createSaltedVerificationKeyFromBytes(
+    userIdBytes: userIdBytes,
+    passwordBytes: passwordBytes,
     generator: generator,
     safePrime: safePrime,
   );
+
+  // SECURITY: Zero out password bytes immediately after use.
+  passwordBytes.overwriteWithZeros();
 
   // 2. The salted verification key is sent to the server, along with user ID,
   // to register the user for later authentication.
   log.info('User began registration by creating a salted verification key and sending it to the server.');
   verifySalt(saltedVerificationKey.salt);
   log.info('Server stored salted verification key and its salt for future authentication.');
+
+  // SECURITY: Erase the verification key after sending to server.
+  // (In production, only erase after confirming successful transmission.)
+  // saltedVerificationKey.erase();
+
   log.info('///// USER REGISTRATION COMPLETE /////');
 
 
@@ -75,10 +93,21 @@ void main() async {
 
   // 2. The user processes the challenge to generate a session key and its
   // verifiers.
-  final user = await User.fromUserCredsAndChallenge(
-    userId: userId, password: password, challenge: challenge);
-  // Security best practice to zero-fill sensitive data when no longer needed.
+
+  // SECURITY: Re-create password bytes for authentication (original was zeroed
+  // during registration).
+  final passwordBytesForAuth = password.utf8Bytes;
+
+  final user = await User.fromUserCredsBytesAndChallenge(
+    userIdBytes: userIdBytes,
+    passwordBytes: passwordBytesForAuth,
+    challenge: challenge,
+  );
+
+  // SECURITY: Zero out password bytes and challenge after use.
+  passwordBytesForAuth.overwriteWithZeros();
   challenge.erase();
+
   final userSessionVerifiers = user.getUserSessionVerifiers();
 
   // 3. The user-derived verifiers are sent to the server.
@@ -100,10 +129,25 @@ void main() async {
 
   // 5. The user verifies the server session key. Throws an exception if
   // verification fails.
-  await user.verifySession(serverSessionKeyVerifier);
+  try {
+    await user.verifySession(serverSessionKeyVerifier);
+    log.info('✓ Server verified successfully');
+  } on AuthenticationFailure catch (e) {
+    log.severe('❌ Server verification failed: $e');
+    log.severe('Authentication aborted - possible man-in-the-middle attack');
+    return;
+  }
 
   // 6. User and server are now mutually authenticated and can continue using
   // the shared SRP session key to encrypt messages for this user session.
   log.info('User verified session and now SRP-encrypted communication can begin.');
+  log.info('Session keys match: ${user.sessionKey.length} bytes');
+
+  // SECURITY: Clean up user ID bytes when no longer needed.
+  userIdBytes.overwriteWithZeros();
+
+  // NOTE: Keep user.sessionKey and server.sessionKey for encrypted
+  // communication. Only zero them out when the session ends.
+
   log.info('///// AUTHENTICATION COMPLETE /////');
 }
