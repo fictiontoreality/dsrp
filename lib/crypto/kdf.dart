@@ -177,12 +177,39 @@ class HashKdf implements Kdf {
 /// Argon2id KDF wrapper that accepts password bytes.
 ///
 /// Provides a secure, memory-hard KDF suitable for production use.
+///
+/// **Performance Note**: Argon2id is intentionally slow and uses Dart isolates
+/// for parallelism. If you experience non-deterministic slowdowns (operations
+/// taking 60+ seconds instead of the expected 2-6 seconds), see PROFILING.md
+/// for diagnosis and tuning guidance.
 class Argon2idKdf implements Kdf {
   @override
   final String name;
   final Argon2id argon2;
+  /// Optional callback to receive timing information for performance monitoring.
+  ///
+  /// Called after each key derivation with the duration in milliseconds.
+  /// Useful for detecting performance anomalies in production.
+  ///
+  /// Example:
+  /// ```dart
+  /// final kdf = Argon2idKdf(
+  ///   name: 'argon2id',
+  ///   argon2: Argon2id(...),
+  ///   onDeriveComplete: (durationMs) {
+  ///     if (durationMs > 10000) {
+  ///       log.warning('Slow Argon2id: ${durationMs}ms');
+  ///     }
+  ///   },
+  /// );
+  /// ```
+  final void Function(int durationMs)? onDeriveComplete;
 
-  Argon2idKdf({required this.name, required this.argon2});
+  Argon2idKdf({
+    required this.name,
+    required this.argon2,
+    this.onDeriveComplete,
+  });
 
   @override
   Future<Uint8List> deriveKeyFromPasswordBytes({
@@ -190,6 +217,8 @@ class Argon2idKdf implements Kdf {
     required Uint8List salt,
     Uint8List? userIdBytes,
   }) async {
+    final stopwatch = onDeriveComplete != null ? (Stopwatch()..start()) : null;
+
     // I | ':' | p
     final input = concatenateUserIdAndPassword(userIdBytes, passwordBytes);
     final secretKey = await argon2.deriveKey(
@@ -197,6 +226,74 @@ class Argon2idKdf implements Kdf {
       nonce: salt,
     );
     final bytes = await secretKey.extractBytes();
+
+    if (stopwatch != null) {
+      stopwatch.stop();
+      onDeriveComplete!(stopwatch.elapsedMilliseconds);
+    }
+
     return Uint8List.fromList(bytes);
   }
+}
+
+/// Creates a custom Argon2id KDF with specified parameters.
+///
+/// Use this to tune Argon2id performance for your specific environment.
+///
+/// **Parameters:**
+/// - [parallelism]: Number of threads to use (1-224). Higher = more CPU cores used.
+///   Recommended: 1 for tests, 2-4 for production. Default: 4.
+/// - [memoryInKB]: Memory usage in KB (minimum 8×parallelism). Higher = more secure.
+///   Common values: 32768 (32 MB), 65536 (64 MB), 131072 (128 MB). Default: 65536.
+/// - [iterations]: Number of iterations (minimum 1). Higher = slower but more secure.
+///   Recommended: 2-4. Default: 3.
+/// - [hashLength]: Output hash length in bytes. Default: 32.
+/// - [onDeriveComplete]: Optional callback for performance monitoring.
+///
+/// **Performance Tuning Examples:**
+///
+/// ```dart
+/// // For tests - fast, deterministic (no isolates)
+/// final testKdf = createArgon2idKdf(parallelism: 1, memoryInKB: 32768);
+///
+/// // For low-resource servers (1-2 cores)
+/// final lowResourceKdf = createArgon2idKdf(parallelism: 1, memoryInKB: 32768);
+///
+/// // For standard servers (4-8 cores, moderate load)
+/// final standardKdf = createArgon2idKdf(parallelism: 2, memoryInKB: 65536);
+///
+/// // For high-performance servers (8+ cores, dedicated)
+/// final highPerfKdf = createArgon2idKdf(parallelism: 4, memoryInKB: 131072);
+///
+/// // With performance monitoring
+/// final monitoredKdf = createArgon2idKdf(
+///   parallelism: 4,
+///   memoryInKB: 65536,
+///   onDeriveComplete: (ms) => print('Argon2id took ${ms}ms'),
+/// );
+/// ```
+///
+/// **Security vs Performance Trade-offs:**
+/// - Higher parallelism = faster with multiple cores, but more resource usage
+/// - Higher memory = more GPU-resistant, but more RAM usage
+/// - Higher iterations = more secure, but slower
+///
+/// See PROFILING.md for detailed tuning guidance.
+Argon2idKdf createArgon2idKdf({
+  int parallelism = 4,
+  int memoryInKB = 65536,
+  int iterations = 3,
+  int hashLength = 32,
+  void Function(int durationMs)? onDeriveComplete,
+}) {
+  return Argon2idKdf(
+    name: 'argon2id-p${parallelism}m${memoryInKB}i$iterations',
+    argon2: Argon2id(
+      parallelism: parallelism,
+      memory: memoryInKB,
+      iterations: iterations,
+      hashLength: hashLength,
+    ),
+    onDeriveComplete: onDeriveComplete,
+  );
 }
