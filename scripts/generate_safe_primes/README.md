@@ -34,4 +34,4 @@ Increasing the number of bits or changing the desired generator can be done via 
 
 ```
 uv run main.py --prime-bit-length 4096 --generator 4
-``
+```

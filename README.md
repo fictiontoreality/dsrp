@@ -112,10 +112,10 @@ final serverSessionKey = server.sessionKey;
 
 **Note**: Session keys supplement but do not replace TLS encryption. Always use TLS for transport security.
 
-A complete working example is in [examples/srp.dart](examples/srp.dart):
+A complete working example is in [example/srp.dart](example/srp.dart):
 
 ```
-dart examples/srp.dart
+dart example/srp.dart
 ```
 
 ## Advanced Usage
@@ -204,7 +204,7 @@ final user = await User.fromUserCredsBytesAndChallenge(
 
 The default safe prime from RFC5054 may be vulnerable to pre-computed attacks. For production deployments, generate your own custom safe primes.
 
-See [`scripts/generate_safe_primes/README.md`](scripts/generate_safe_primes/README.md) for details.
+See [`scripts/generate_safe_primes`](scripts/generate_safe_primes) for details.
 
 ### 2. Use Strong Key Derivation Functions
 
@@ -262,14 +262,14 @@ guide, including how to optimize Argon2id parameters via benchmarking.
 
 ## Additional Resources
 
-- **Examples**: See [examples/srp.dart](examples/srp.dart) for a complete authentication flow
+- **Examples**: See the [example folder](example) , such as [example/srp.dart](example/srp.dart) for a complete authentication flow.
 - **API Documentation**: Full API docs available at [pub.dev](https://pub.dev/documentation/dsrp/latest/)
-- **Issues**: Report bugs at the [issue tracker](https://github.com/YOUR_USERNAME/dsrp/issues)
+- **Issues**: Report bugs at the [issue tracker](https://codeberg.org/fictiontoreality/dsrp/issues)
 - **RFC5054**: [SRP specification](https://datatracker.ietf.org/doc/html/rfc5054)
 
 ## Contributions
 
-- See [CONTRIBUTION.md](CONTRIBUTION.md) on ways to contribute.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) on ways to contribute.
 - See [SECURITY.md](SECURITY.md) for reporting security concerns
 
 ## License
