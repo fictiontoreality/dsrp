@@ -329,38 +329,9 @@ class User {
     Kdf? customKdf,
     final Uint8List? ephemeralUserPrivateKey,
   }) async {
-    //TODO: Move to _resolveKdf method.
-    if (kdf != null && customKdf != null) {
-      throw InvalidParameterException(
-        'Cannot provide both a KDF choice and a custom KDF. Please provide only one.'
-      );
-    }
-    final resolvedKdf = customKdf ?? getKdf(kdf ?? defaultKdfChoice);
-
-    //TODO: Move to _resolveHashFunction method.
-    final HashFunction resolvedHashFunction;
-    if (challenge.isCustomHashFunction) {
-      if (customHashFunction == null) {
-        throw InvalidParameterException(
-          'Server requires custom hash function, but none provided.'
-        );
-      } else if (customHashFunction.name != challenge.hashFunctionName) {
-        throw InvalidParameterException(
-          'Custom hash function name ${customHashFunction.name} does not match server requested hash function ${challenge.hashFunctionName}.'
-        );
-      }
-      resolvedHashFunction = customHashFunction;
-    } else {
-      final hashFunctionChoice = HashFunctionChoice.values.asNameMap()[
-        challenge.hashFunctionName
-      ];
-      if (hashFunctionChoice == null) {
-        throw InvalidParameterException(
-          'Hash function in server challenge is not supported by this client, possibly due to client / server version mismatch.',
-        );
-      }
-      resolvedHashFunction = getHashFunction(hashFunctionChoice);
-    }
+    final resolvedKdf = _resolveKdf(kdf, customKdf);
+    final resolvedHashFunction = _resolveHashFunction(
+      challenge, customHashFunction);
 
     final user = User._(
       userIdBytes: userIdBytes,
@@ -705,5 +676,44 @@ class User {
       safePrime: _safePrimeBytes,
       hashFunction: _hashFunction
     );
+  }
+
+  /// Resolve the KDF to use based on user parameters.
+  static Kdf _resolveKdf(KdfChoice? kdf, Kdf? customKdf) {
+    if (kdf != null && customKdf != null) {
+      throw InvalidParameterException(
+        'Cannot provide both a KDF choice and a custom KDF. Please provide only one.'
+      );
+    }
+    return customKdf ?? getKdf(kdf ?? defaultKdfChoice);
+  }
+
+  /// Resolve the hash function to use based on user parameters.
+  static HashFunction _resolveHashFunction(
+    Challenge challenge,
+    HashFunction? customHashFunction,
+  ) {
+    if (challenge.isCustomHashFunction) {
+      if (customHashFunction == null) {
+        throw InvalidParameterException(
+          'Server requires custom hash function, but none provided.'
+        );
+      } else if (customHashFunction.name != challenge.hashFunctionName) {
+        throw InvalidParameterException(
+          'Custom hash function name ${customHashFunction.name} does not match server requested hash function ${challenge.hashFunctionName}.'
+        );
+      }
+      return customHashFunction;
+    } else {
+      final hashFunctionChoice = HashFunctionChoice.values.asNameMap()[
+        challenge.hashFunctionName
+      ];
+      if (hashFunctionChoice == null) {
+        throw InvalidParameterException(
+          'Hash function in server challenge is not supported by this client, possibly due to client / server version mismatch.',
+        );
+      }
+      return getHashFunction(hashFunctionChoice);
+    }
   }
 }

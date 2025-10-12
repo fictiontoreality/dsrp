@@ -174,19 +174,7 @@ class Server {
        generator = generator ?? defaultGenerator,
        _safePrimeBytes = safePrime?.toByteList() ?? defaultSafePrime.toByteList(),
        safePrime = safePrime ?? defaultSafePrime {
-    // TODO: Move to _resolveHashFunction?
-    if (hashFunction != null && customHashFunction != null) {
-      throw InvalidParameterException(
-        'Cannot provide both hashFunction and customHashFunction. Please provide only one.'
-      );
-    }
-    if (customHashFunction != null) {
-      hashFunctionChoice = null;
-      _hashFunction = customHashFunction;
-    } else {
-      hashFunctionChoice = hashFunction ?? defaultHashFunctionChoice;
-      _hashFunction = getHashFunction(hashFunctionChoice!);
-    }
+    _resolveHashFunction(hashFunction, customHashFunction);
     
     if (safePrime == null) {
       _log.warning('Using default safe prime. For production use, generate a custom safe prime using scripts/generate_safe_primes to reduce risk of pre-computed attacks.');
@@ -355,5 +343,23 @@ class Server {
       safePrime: _safePrimeBytes,
       hashFunction: _hashFunction
     );
+  }
+
+  /// Resolves the hash function to use based on user parameters.
+  void _resolveHashFunction(
+    HashFunctionChoice? hashFunction, HashFunction? customHashFunction
+  ) {
+    if (hashFunction != null && customHashFunction != null) {
+      throw InvalidParameterException(
+        'Cannot provide both hashFunction and customHashFunction. Please provide only one.'
+      );
+    }
+    if (customHashFunction != null) {
+      hashFunctionChoice = null;
+      _hashFunction = customHashFunction;
+    } else {
+      hashFunctionChoice = hashFunction ?? defaultHashFunctionChoice;
+      _hashFunction = getHashFunction(hashFunctionChoice!);
+    }
   }
 }
