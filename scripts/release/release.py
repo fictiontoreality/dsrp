@@ -396,6 +396,99 @@ def publish_package() -> bool:
         return False
 
 
+def tag_release() -> bool:
+    """Create a signed git tag for the release."""
+    print(f"\n{Colors.BOLD}{Colors.CYAN}Creating signed git tag...{Colors.ENDC}")
+
+    version = get_version()
+    tag_name = f"v{version}"
+
+    # Check if tag already exists
+    success, output = run_command(
+        ['git', 'tag', '-l', tag_name],
+        'Check existing tags',
+        cwd=str(get_project_root())
+    )
+
+    if success and output.strip():
+        print_warning(f"Tag {tag_name} already exists, skipping tag creation")
+        return True
+
+    # Create signed tag
+    tag_message = f"Release version {version}"
+
+    success, output = run_command(
+        ['git', 'tag', '-s', tag_name, '-m', tag_message],
+        'Create signed tag',
+        cwd=str(get_project_root())
+    )
+
+    if not success:
+        print_error(f"Failed to create signed tag {tag_name}")
+        print(output)
+        print_warning("You may need to configure GPG signing:")
+        print("  git config --global user.signingkey <your-key-id>")
+        return False
+
+    print_success(f"Created signed tag {tag_name}")
+
+    # Ask if user wants to push commits and tag
+    response = input(f"\n{Colors.BOLD}Push commits and tag {tag_name} to remote? (y/N): {Colors.ENDC}")
+
+    if response.lower() == 'y':
+        # First, get the current branch name
+        success, output = run_command(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            'Get current branch',
+            cwd=str(get_project_root())
+        )
+
+        if not success:
+            print_error("Failed to get current branch name")
+            print(output)
+            print_warning(f"You can push manually with: git push && git push origin {tag_name}")
+            return True
+
+        current_branch = output.strip()
+
+        # Push commits first
+        print(f"  Pushing commits on branch '{current_branch}'...")
+        success, output = run_command(
+            ['git', 'push', 'origin', current_branch],
+            'Push commits to remote',
+            cwd=str(get_project_root())
+        )
+
+        if not success:
+            print_error(f"Failed to push commits on branch '{current_branch}'")
+            print(output)
+            print_warning(f"You can push it manually later with: git push origin {current_branch} && git push origin {tag_name}")
+            return True  # Don't fail the release if push fails
+
+        print_success(f"Pushed commits on branch '{current_branch}'")
+
+        # Then push the tag
+        print(f"  Pushing tag {tag_name}...")
+        success, output = run_command(
+            ['git', 'push', 'origin', tag_name],
+            'Push tag to remote',
+            cwd=str(get_project_root())
+        )
+
+        if not success:
+            print_error(f"Failed to push tag {tag_name}")
+            print(output)
+            print_warning(f"Commits were pushed, but you need to push the tag manually with: git push origin {tag_name}")
+            return True  # Don't fail the release if push fails
+
+        print_success(f"Pushed tag {tag_name} to remote")
+    else:
+        print_warning(f"Tag {tag_name} created locally but not pushed")
+        print(f"Push it later with: git push && git push origin {tag_name}")
+
+    return True
+
+
 def main():
     """Main release flow."""
     print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}")
@@ -427,6 +520,12 @@ def main():
     if not publish_package():
         print(f"\n{Colors.RED}{Colors.BOLD}Release aborted{Colors.ENDC}")
         sys.exit(1)
+
+    # Tag the release
+    if not tag_release():
+        print_warning("Release published but tagging failed")
+        print("You can create the tag manually later with:")
+        print(f"  git tag -s v{version} -m 'Release version {version}'")
 
     print(f"\n{Colors.GREEN}{Colors.BOLD}{'='*60}{Colors.ENDC}")
     print(f"{Colors.GREEN}{Colors.BOLD}  Release Complete!{Colors.ENDC}")
