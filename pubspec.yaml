@@ -1,5 +1,5 @@
 name: dsrp
-description: Pure Dart implementation of Secure Remote Password (SRP) protocol for password authentication without transmitting credentials.
+description: Secure Remote Password (SRP-6a) for zero-knowledge authentication without transmitting password-equivalents.
 version: 0.5.2
 homepage: https://codeberg.org/fictiontoreality/dsrp
 repository: https://codeberg.org/fictiontoreality/dsrp
