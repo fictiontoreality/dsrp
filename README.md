@@ -3,7 +3,8 @@
 [![pub package](https://img.shields.io/pub/v/dsrp.svg)](https://pub.dev/packages/dsrp)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/LICENSE)
 
-A pure Dart implementation of the [Secure Remote Password (SRP-6a)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol) protocol for secure user authentication.
+
+**dsrp** is a pure-Dart implementation of the [Secure Remote Password (SRP-6a)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol) protocol for secure user authentication, compatible with all Dart and Flutter platforms.
 
 SRP allows password-based authentication without transmitting password-equivalent information to the server, protecting against man-in-the-middle attacks and server database breaches.
 
@@ -31,6 +32,11 @@ SRP allows password-based authentication without transmitting password-equivalen
 * **Memory security** - Uses `Uint8List` for passwords with secure erasure via `overwriteWithZeros()`.
 * **Python interoperability** - Fully compatible with [pysrp](https://github.com/cocagne/pysrp) library.
 
+### Platform Support
+
+- ✅ Flutter (Android, iOS, Desktop, Web)
+- ✅ All Dart platforms
+
 ## Installation
 
 Add `dsrp` to your `pubspec.yaml`:
@@ -54,7 +60,19 @@ dependencies:
 
 ## Usage
 
-SRP authentication consists of two phases:
+SRP authentication consists of two phases, registration and authentication:
+
+  Client                            Server
+     |                                |                          |
+     | --- 1. Registration ---------> | (stores salt + verifier) |
+     |                                |                          |
+     | <-- 2a. Challenge ------------ | (ephemeral key B)        |
+     |                                |                          |
+     | --- 2b. User Proof ----------> | (ephemeral key A + M1)   |
+     |                                |                          |
+     | <-- 2c. Server Proof --------- | (M2)                     |
+     |                                |                          |
+     | === Mutual Authentication ==== | (shared session key)     |
 
 ### 1. Registration Phase
 
@@ -270,7 +288,7 @@ guide, including how to optimize Argon2id parameters via benchmarking.
 ## Contributions
 
 - See [CONTRIBUTING.md](CONTRIBUTING.md) on ways to contribute.
-- See [SECURITY.md](SECURITY.md) for reporting security concerns
+- See [SECURITY.md](SECURITY.md) for reporting security concerns.
 
 ## License
 
