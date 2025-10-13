@@ -5,3 +5,4 @@ scripts/
 test/
 CLAUDE.md
 release-plan.md
+*.html

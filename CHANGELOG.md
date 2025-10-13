@@ -1,3 +1,7 @@
+## 0.5.1
+
+Fixes ASCII sequence diagram formatting in README.
+
 ## 0.5.0
 
 Initial beta release. Has been tested in production with pysrp server interop
