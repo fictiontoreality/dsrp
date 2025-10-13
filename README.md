@@ -132,10 +132,10 @@ final serverSessionKey = server.sessionKey;
 
 **Note**: Session keys supplement but do not replace TLS encryption. Always use TLS for transport security.
 
-A complete working example is in [example/srp.dart](example/srp.dart):
+A complete working example is in [example/dsrp.dart](example/dsrp.dart):
 
 ```
-dart example/srp.dart
+dart example/dsrp.dart
 ```
 
 ## Advanced Usage
@@ -282,7 +282,7 @@ guide, including how to optimize Argon2id parameters via benchmarking.
 
 ## Additional Resources
 
-- **Examples**: See the [example folder](example) , such as [example/srp.dart](example/srp.dart) for a complete authentication flow.
+- **Examples**: See the [example folder](example) , such as [example/dsrp.dart](example/dsrp.dart) for a complete authentication flow.
 - **API Documentation**: Full API docs available at [pub.dev](https://pub.dev/documentation/dsrp/latest/)
 - **Issues**: Report bugs at the [issue tracker](https://codeberg.org/fictiontoreality/dsrp/issues)
 - **RFC5054**: [SRP specification](https://datatracker.ietf.org/doc/html/rfc5054)
