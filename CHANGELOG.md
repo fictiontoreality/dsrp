@@ -1,3 +1,10 @@
+## 0.5.2
+
+Minor changes to improve package score.
+
+Also adds a release script (`scripts/release`) to guardrail future releases
+prior to publishing.
+
 ## 0.5.1
 
 Fixes ASCII sequence diagram formatting in README.
