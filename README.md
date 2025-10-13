@@ -62,17 +62,19 @@ dependencies:
 
 SRP authentication consists of two phases, registration and authentication:
 
-  Client                            Server
-     |                                |                          |
-     | --- 1. Registration ---------> | (stores salt + verifier) |
-     |                                |                          |
-     | <-- 2a. Challenge ------------ | (ephemeral key B)        |
-     |                                |                          |
-     | --- 2b. User Proof ----------> | (ephemeral key A + M1)   |
-     |                                |                          |
-     | <-- 2c. Server Proof --------- | (M2)                     |
-     |                                |                          |
-     | === Mutual Authentication ==== | (shared session key)     |
+```
+Client                            Server
+   |                                 |
+   | --- 1. Registration ----------> | (stores salt + verifier)
+   |                                 |
+   | <-- 2a. Challenge ------------- | (ephemeral key B)
+   |                                 |
+   | --- 2b. User Proof -----------> | (ephemeral key A + M1)
+   |                                 |
+   | <-- 2c. Server Proof ---------- | (M2)
+   |                                 |
+   | === Mutual Authentication ===== | (shared session key)
+```
 
 ### 1. Registration Phase
 
