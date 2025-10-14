@@ -1,3 +1,8 @@
+## 0.5.3
+
+- Fix README links.
+- Minor improvements to documentation and release script.
+
 ## 0.5.2
 
 Minor changes to improve package score.

@@ -1,6 +1,6 @@
 name: dsrp
 description: Secure Remote Password (SRP-6a) for zero-knowledge authentication without transmitting password-equivalents.
-version: 0.5.2
+version: 0.5.3
 homepage: https://codeberg.org/fictiontoreality/dsrp
 repository: https://codeberg.org/fictiontoreality/dsrp
 issue_tracker: https://codeberg.org/fictiontoreality/dsrp/issues
