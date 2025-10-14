@@ -132,7 +132,7 @@ final serverSessionKey = server.sessionKey;
 
 **Note**: Session keys supplement but do not replace TLS encryption. Always use TLS for transport security.
 
-A complete working example is in [example/dsrp.dart](example/dsrp.dart):
+A complete working example is in [example/dsrp.dart](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/example/dsrp.dart):
 
 ```
 dart example/dsrp.dart
@@ -224,7 +224,7 @@ final user = await User.fromUserCredsBytesAndChallenge(
 
 The default safe prime from RFC5054 may be vulnerable to pre-computed attacks. For production deployments, generate your own custom safe primes.
 
-See [`scripts/generate_safe_primes`](scripts/generate_safe_primes) for details.
+See [`scripts/generate_safe_primes`](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/scripts/generate_safe_primes) for details.
 
 ### 2. Use Strong Key Derivation Functions
 
@@ -273,25 +273,25 @@ final saltedKey = await User.createSaltedVerificationKey(
 - Private keys
 - User IDs (if privacy-sensitive)
 
-See [SECURITY.md](SECURITY.md) for more security tips.
+See [SECURITY.md](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/SECURITY.md) for more security tips.
 
 ## Performance and Profiling
 
-See [PROFILING.md](PROFILING.md) for a performance profiling and optimization
+See [PROFILING.md](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/PROFILING.md) for a performance profiling and optimization
 guide, including how to optimize Argon2id parameters via benchmarking.
 
 ## Additional Resources
 
-- **Examples**: See the [example folder](example) , such as [example/dsrp.dart](example/dsrp.dart) for a complete authentication flow.
+- **Examples**: See the [example folder](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/example), such as [example/dsrp.dart](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/example/dsrp.dart) for a complete authentication flow.
 - **API Documentation**: Full API docs available at [pub.dev](https://pub.dev/documentation/dsrp/latest/)
 - **Issues**: Report bugs at the [issue tracker](https://codeberg.org/fictiontoreality/dsrp/issues)
 - **RFC5054**: [SRP specification](https://datatracker.ietf.org/doc/html/rfc5054)
 
 ## Contributions
 
-- See [CONTRIBUTING.md](CONTRIBUTING.md) on ways to contribute.
-- See [SECURITY.md](SECURITY.md) for reporting security concerns.
+- See [CONTRIBUTING.md](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/CONTRIBUTING.md) on ways to contribute.
+- See [SECURITY.md](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/SECURITY.md) for reporting security concerns.
 
 ## License
 
-Apache 2.0 - See [LICENSE](LICENSE) for details.
+Apache 2.0 - See [LICENSE](https://codeberg.org/fictiontoreality/dsrp/src/branch/main/LICENSE) for details.
