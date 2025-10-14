@@ -1,3 +1,7 @@
+## 0.5.4
+
+Fix README installation instructions.
+
 ## 0.5.3
 
 - Fix README links.

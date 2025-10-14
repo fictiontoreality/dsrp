@@ -43,7 +43,7 @@ Add `dsrp` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dsrp: ^0.5.3
+  dsrp: ^0.5.4
 ```
 
 Then run:
