@@ -1,3 +1,6 @@
+/// Server-side operations for SRP.
+library;
+
 import 'dart:convert' show base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultHashFunctionChoice, defaultSafePrime, deriveOptimalByteLengthForEphemeralKeys;

@@ -1,3 +1,6 @@
+/// Library exports.
+library;
+
 export 'package:dsrp/crypto/hash.dart' show HashFunctionChoice;
 export 'package:dsrp/crypto/kdf.dart' show KdfChoice, Kdf, createArgon2idKdf;
 export 'package:dsrp/exceptions.dart' show

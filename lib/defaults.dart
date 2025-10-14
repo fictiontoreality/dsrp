@@ -1,3 +1,6 @@
+/// Default parameters and values used.
+library;
+
 import 'package:dsrp/crypto/hash.dart';
 import 'package:dsrp/crypto/kdf.dart';
 

@@ -1,3 +1,6 @@
+/// Client-side operations for SRP.
+library;
+
 import 'dart:convert' show utf8, base64;
 import 'dart:typed_data';
 import 'package:dsrp/defaults.dart' show defaultGenerator, defaultKdfChoice, defaultSafePrime, defaultSaltByteLengthForSaltedVerificationKey, deriveOptimalByteLengthForEphemeralKeys;

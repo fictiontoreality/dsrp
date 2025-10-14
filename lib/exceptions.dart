@@ -1,3 +1,6 @@
+/// Custom exceptions.
+library;
+
 /// Exception thrown when SRP authentication fails.
 ///
 /// This can occur during session key verification when the user or server
