@@ -28,12 +28,12 @@ This project follows the principles of respect, collaboration, and professionali
 1. Fork the repository on your preferred Git hosting platform
 2. Clone your fork locally:
    ```bash
-   git clone https://codeberg.org/YOUR_USERNAME/dsrp.git
+   git clone https://github.com/YOUR_USERNAME/dsrp.git
    cd dsrp
    ```
 3. Add the upstream repository:
    ```bash
-   git remote add upstream https://codeberg.org/fictiontoreality/dsrp.git
+   git remote add upstream https://github.com/fictiontoreality/dsrp.git
    ```
 
 ## Development Setup
@@ -75,7 +75,7 @@ We welcome various types of contributions:
 
 ### Before You Start
 
-1. Check existing [issues](https://codeberg.org/fictiontoreality/dsrp/issues) to see if your idea is already being discussed.
+1. Check existing [issues](https://github.com/fictiontoreality/dsrp/issues) to see if your idea is already being discussed.
 2. For major changes, open an issue first to discuss your approach.
 3. For security vulnerabilities, see [SECURITY.md](SECURITY.md) - do NOT open a public issue.
 
