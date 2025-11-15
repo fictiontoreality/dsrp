@@ -1,3 +1,11 @@
+## 0.5.5
+
+Migrate from Codeberg to Github.
+
+This was done in part to ease contribution, but also because Github has better
+security advisory features, especially important for security-focused packages
+like this one.
+
 ## 0.5.4
 
 Fix README installation instructions.
